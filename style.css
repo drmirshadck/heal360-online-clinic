@@ -292,3 +292,4 @@ h2.reveal{transform:translateY(30px) scale(.97)}h2.reveal.in{transform:none}
 .rd-ctl i{font-style:normal;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:19px}
 .rd-ctl i.end{background:#d93025}
 @media(max-width:860px){.room{padding:64px 0}.room-in{grid-template-columns:1fr;gap:34px}.room-demo{transform:none}}
+html,body{overflow-x:clip}
