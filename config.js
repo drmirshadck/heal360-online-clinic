@@ -20,7 +20,7 @@ window.SITE = {
       { calSlug: "review-consultation", name: "Review consultation", duration: "20 minutes", fee: 0, text: "For patients already under the doctor's care." }
     ]
   },
-  helper: { url: "" },   // DotCom booking helper URL (set after the helper is deployed)
+  helper: { url: "https://heal360-helper.drmirshadck.workers.dev" },   // DotCom booking helper URL (set after the helper is deployed)
   doctors: [
     {
       id: "seena",
