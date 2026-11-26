@@ -5,10 +5,27 @@ window.SITE = {
   phoneShow: "+91 75111 36045",
   whatsapp: "917511136045",
   domain: "",            // fill when the domain is bought
+  /* ---- used by the booking calendar and doctor pages ---- */
+  brand: { title: "HEAL 360", subtitle: "Online Clinic" },
+  theme: { brand: "#1a73e8", brandDeep: "#0b2e6f", accent: "#188038", light: "#bcd7ff" },
+  doctor: { name: "Heal 360 Online Clinic", shortName: "Heal 360", photo: "logo-real/mark-160.png", role: "Online homoeopathy clinic" },
+  contact: { phoneDisplay: "+91 75111 36045", whatsapp: "917511136045", clinicName: "Heal 360 Online Clinic" },
+  payment: { upiId: "", payeeName: "Heal 360 Online Clinic" },
+  cal: { username: "", doctorEmail: "" },
+  video: { roomUrl: "" },
+  consultations: {
+    intro: "Choose your consultation, then pick your time.",
+    types: [
+      { calSlug: "online-video-consultation", name: "New consultation", duration: "30 minutes", fee: 0, featured: true, text: "A detailed first consultation with a complete case history." },
+      { calSlug: "review-consultation", name: "Review consultation", duration: "20 minutes", fee: 0, text: "For patients already under the doctor's care." }
+    ]
+  },
   helper: { url: "" },   // DotCom booking helper URL (set after the helper is deployed)
   doctors: [
     {
       id: "seena",
+      title: "BHMS, MD (Paediatrics) · TCMC Reg. 10868",
+      languages: "Malayalam, English",
       name: "Dr. Seena Naseem K.A.",
       quals: "BHMS, MD (Paediatrics)",
       role: "Paediatric Care & Allergic Disorders",
@@ -27,6 +44,8 @@ window.SITE = {
     },
     {
       id: "shameema",
+      title: "BHMS, MD (Homoeopathy) Scholar · TCMC Reg. 10829",
+      languages: "Malayalam, English",
       name: "Dr. Shameema",
       quals: "BHMS, MD (Homoeopathy) Scholar",
       role: "Carpal Tunnel Syndrome & Nerve Pain",
@@ -46,6 +65,8 @@ window.SITE = {
     },
     {
       id: "musheera",
+      title: "BHMS · TCMC Reg. 11350",
+      languages: "Malayalam, English",
       name: "Dr. Musheera K.",
       quals: "BHMS",
       role: "Skin & Hair Health",

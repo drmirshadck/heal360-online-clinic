@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultation Room</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script>/* DotCom own video: a link with a booking, or a site with no Daily room set, uses the website's own room (room.html) */
+document.write('<script src="config.js?v=' + Date.now() + '"><\/script>');</script>
+<script>(function(){ var S = window.SITE || {}, v = S.video || {}, ds = (S.doctors || []).some(function(d){ return d.roomUrl; });
+  if (/[?&]b=/.test(location.search) || (S.helper && S.helper.url && !v.roomUrl && !ds)) location.replace("room.html" + location.search); })();</script>
+<script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>')</script><!-- always the newest settings -->
+<!-- Same video setup as the Dr Murshida site. Doctor details come from config.js. -->
+<style>
+  :root{--navy:#074a50;--navy-2:#06363a;--blue:#0e8a8a;--sky:#9fe3dc;--muted:#5b6b7c;--line:#e3ebf2}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Nunito Sans",system-ui,sans-serif;background:#f4f9fa;color:#1d2b3a;min-height:100vh;display:flex;flex-direction:column}
+  a{color:inherit;text-decoration:none}
+  header{background:#fff;border-bottom:1px solid var(--line)}
+  .nav{max-width:1200px;margin:0 auto;padding:0 24px;height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-mark{width:40px;height:40px;border-radius:12px;background:var(--navy);color:#fff;display:grid;place-items:center;font:700 15px Outfit}
+  .logo b{display:block;font:700 16px Outfit;color:var(--navy)}
+  .logo span{font-size:12px;color:var(--muted)}
+  .back{font:600 14px Outfit;color:var(--navy);border:1px solid var(--line);padding:10px 18px;border-radius:999px;background:#fff}
+  main{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:24px}
+  .panel{background:#fff;border-radius:24px;border:1px solid var(--line);overflow:hidden}
+  .intro{display:grid;grid-template-columns:1.1fr .9fr;min-height:540px}
+  .intro-copy{padding:56px 48px}
+  .eyebrow{font:600 13px Outfit;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue)}
+  h1{font:800 clamp(30px,4vw,44px) Outfit;color:var(--navy);margin:14px 0 16px;line-height:1.15}
+  p.lead{color:var(--muted);font-size:17px;margin-bottom:28px}
+  label{display:block;font:600 14px Outfit;color:var(--navy);margin-bottom:8px}
+  input{width:100%;font:16px "Nunito Sans";padding:15px 18px;border:1px solid var(--line);border-radius:14px;margin-bottom:18px;background:#f9fcfe}
+  input:focus{outline:2px solid var(--sky);border-color:var(--sky)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;cursor:pointer;font:600 16px Outfit;border-radius:999px;padding:16px 30px;background:var(--navy);color:#fff;width:100%}
+  .btn:hover{background:var(--navy-2)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .checks{list-style:none;margin-top:28px;display:grid;gap:10px;color:var(--muted);font-size:15px}
+  .checks li{padding-left:28px;position:relative}
+  .checks li:before{content:"✓";position:absolute;left:0;color:var(--blue);font-weight:700}
+  .intro-side{background:linear-gradient(135deg,var(--navy-2),var(--navy) 55%,var(--blue));color:#e3f1f1;padding:56px 44px;display:flex;flex-direction:column;justify-content:center;gap:22px}
+  .intro-side h2{font:700 24px Outfit;color:#fff}
+  .doc{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,.1);border-radius:18px;padding:16px}
+  .doc img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center 20%}
+  .doc b{display:block;color:#fff;font:700 16px Outfit}
+  .side-steps{list-style:none;display:grid;gap:14px;counter-reset:s}
+  .side-steps li{padding-left:44px;position:relative}
+  .side-steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;background:var(--sky);color:var(--navy);display:grid;place-items:center;font:700 14px Outfit}
+  #callWrap{display:none;height:calc(100vh - 72px - 48px);min-height:520px}
+  #callWrap iframe{width:100%;height:100%;border:0}
+  .note{margin-top:16px;text-align:center;color:var(--muted);font-size:14px}
+  .note a{color:var(--blue);font-weight:600}
+  a.quiet{color:inherit;text-decoration:none;margin-left:6px;cursor:default}
+  .err{display:none;margin-bottom:18px;padding:14px 16px;border-radius:14px;background:#fff4e5;color:#7a4b00;font-size:15px}
+  @media (max-width:900px){
+    .intro{grid-template-columns:1fr}
+    .intro-copy,.intro-side{padding:36px 24px}
+    main{padding:12px}
+    #callWrap{height:calc(100vh - 72px - 24px)}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="./" class="logo"><span class="logo-mark" id="mark"></span><span><b id="dn1"></b><span>Consultation room</span></span></a>
+    <a href="./" class="back">← Back to website</a>
+  </div>
+</header>
+
+<main>
+  <div class="panel" id="introPanel">
+    <div class="intro">
+      <div class="intro-copy">
+        <span class="eyebrow" id="roleTag">Online video consultation</span>
+        <h1 id="title">Join your consultation</h1>
+        <p class="lead" id="sub">Enter your name and tap join. The doctor will let you in at your appointment time. The call stays right here on this page.</p>
+        <div class="err" id="err"></div>
+        <form id="joinForm">
+          <label for="name">Your full name</label>
+          <input id="name" required placeholder="e.g. Fathima Rahman" autocomplete="name">
+          <button class="btn" id="joinBtn" type="submit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="3"/><path d="M16 10l6-3v10l-6-3"/></svg>
+            Join video call
+          </button>
+        </form>
+        <ul class="checks">
+          <li>Use a phone or laptop with a camera, in a quiet place</li>
+          <li>Allow camera and microphone when your browser asks</li>
+          <li>Keep previous reports and prescriptions nearby</li>
+        </ul>
+      </div>
+      <div class="intro-side">
+        <div class="doc"><img id="dimg" alt=""><div><b id="dn2"></b>Online consultation</div></div>
+        <h2>What happens next</h2>
+        <ol class="side-steps">
+          <li>You'll check your camera and microphone</li>
+          <li>You wait briefly in the waiting room</li>
+          <li>The doctor admits you and the consultation begins</li>
+        </ol>
+        <p style="font-size:14px">Trouble joining? WhatsApp <a id="waHelp" target="_blank" rel="noopener" style="color:var(--sky);font-weight:600"></a></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="callWrap"></div>
+  <p class="note" id="noBook">Don't have an appointment yet? <a href="./#book">Book a video consultation</a></p>
+</main>
+
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
+<script>
+  const S = window.SITE;
+  // several doctors: consult.html?d=<doctor id> opens that doctor's own room
+  const DOCS = S.doctors || [];
+  const DD = DOCS.find(d => d.id === new URLSearchParams(location.search).get('d')) || DOCS[0] || {};
+  const D = { name: DD.name || S.doctor.name, photo: DD.photo || S.doctor.photo };
+  const ROOM_URL = (DD.roomUrl || S.video.roomUrl || '').trim();
+  const $ = id => document.getElementById(id);
+  const r = document.documentElement.style;
+  r.setProperty('--navy', S.theme.brandDeep); r.setProperty('--blue', S.theme.brand); r.setProperty('--sky', S.theme.light);
+  document.title = 'Consultation Room | ' + D.name;
+  $('dn1').textContent = $('dn2').textContent = D.name;
+  $('mark').textContent = D.name.replace(/^Dr\.?\s*/i, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('dimg').src = D.photo; $('dimg').alt = D.name;
+  $('waHelp').href = 'https://wa.me/' + S.contact.whatsapp; $('waHelp').textContent = S.contact.phoneDisplay;
+
+  const params = new URLSearchParams(location.search);
+  const hostToken = params.get('host');
+  const isHost = !!hostToken;
+  const nameInput = $('name'), err = $('err');
+
+  // Standard: the doctor (logged in on this site with their PIN) can open the room as host from here
+  let docToken = ""; try { docToken = localStorage.getItem("docToken") || ""; } catch (e) {}
+  const HELPER = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
+  if (!isHost && HELPER) {
+    const q = document.createElement("a");
+    q.href = "doctor.html?next=room" + (DD.id ? "&d=" + encodeURIComponent(DD.id) : ""); q.className = "quiet"; q.setAttribute("aria-label", "Clinic login"); q.textContent = "·";
+    document.querySelector(".note").appendChild(q);
+    if (docToken) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.style.marginTop = "12px"; b.style.background = "var(--blue)";
+      b.textContent = "Start as doctor (host)";
+      b.onclick = async () => {
+        b.disabled = true; b.textContent = "Opening…";
+        try {
+          const r = await fetch(HELPER + "/host-token", { method: "POST", headers: { Authorization: "Bearer " + docToken, "Content-Type": "application/json" }, body: JSON.stringify({ doctor: DD.id || "" }) });
+          const d = await r.json(); if (!r.ok || !d.token) throw new Error(d.error || "");
+          location.href = "consult.html?" + (DD.id ? "d=" + encodeURIComponent(DD.id) + "&" : "") + "host=" + encodeURIComponent(d.token);
+        } catch (e) { location.href = "doctor.html?next=room" + (DD.id ? "&d=" + encodeURIComponent(DD.id) : ""); }
+      };
+      document.getElementById("joinForm").appendChild(b);
+    }
+  }
+  if (isHost) {
+    $('roleTag').textContent = 'Doctor login';
+    $('title').textContent = 'Start consultations';
+    $('sub').textContent = 'You join as the host. Patients wait in the waiting room until you admit them.';
+    nameInput.value = D.name;
+    $('noBook').style.display = 'none';
+  }
+  try { const saved = localStorage.getItem('patientName'); if (saved && !isHost) nameInput.value = saved; } catch (e) {}
+
+  $('joinForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    err.style.display = 'none';
+    const userName = nameInput.value.trim();
+    if (!userName) return;
+    if (!ROOM_URL) {
+      err.textContent = 'The consultation room is being set up. Please contact the clinic on WhatsApp.';
+      err.style.display = 'block';
+      return;
+    }
+    try { if (!isHost) localStorage.setItem('patientName', userName); } catch (e) {}
+    const btn = $('joinBtn');
+    btn.disabled = true;
+
+    const wrap = $('callWrap');
+    $('introPanel').style.display = 'none';
+    $('noBook').style.display = 'none';
+    wrap.style.display = 'block';
+    window.scrollTo(0, 0);
+
+    const call = window.DailyIframe.createFrame(wrap, {
+      showLeaveButton: true,
+      showFullscreenButton: true,
+      iframeStyle: { width: '100%', height: '100%', border: '0' },
+      theme: { colors: { accent: S.theme.brand, accentText: '#FFFFFF', background: S.theme.brandDeep, backgroundAccent: S.theme.brandDeep, baseText: '#FFFFFF', border: S.theme.brand, mainAreaBg: S.theme.brandDeep, mainAreaBgAccent: S.theme.brandDeep, mainAreaText: '#FFFFFF', supportiveText: '#dfeeee' } }
+    });
+    call.on('left-meeting', () => { call.destroy(); location.href = './'; });
+    call.on('error', () => {
+      call.destroy();
+      wrap.style.display = 'none';
+      $('introPanel').style.display = 'block';
+      btn.disabled = false;
+      err.textContent = 'Could not connect to the consultation room. Please check your internet connection and try again, or WhatsApp the clinic.';
+      err.style.display = 'block';
+    });
+    const opts = { url: ROOM_URL, userName };
+    if (isHost) opts.token = hostToken;
+    call.join(opts);
+  });
+</script>
+</body>
+</html>

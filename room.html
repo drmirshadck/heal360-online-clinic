@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Consultation room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>')</script>
+<!-- DotCom by Arshees — own video room, in the website's own design.
+     The doctor and patient connect directly (WebRTC); when a network blocks that, the call is relayed by Cloudflare.
+     The website's helper only checks the booking, keeps the patient's consent time, and passes connection messages.
+     Nothing of the call (video, audio, chat) is recorded or stored. -->
+<style>
+  :root{--brand:#0e8a8a;--brand-deep:#074a50;--accent:#d94a3d;--light:#9fe3dc;
+    --soft:color-mix(in srgb,var(--brand) 7%,#f6f8f9);--line:color-mix(in srgb,var(--brand) 14%,#e6e6e6);--fg:#1d3239;--muted:#5d727a;
+    --display:"Outfit","Segoe UI",system-ui,sans-serif;--body:"Nunito Sans",system-ui,sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--body);background:var(--soft);color:var(--fg);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+  a{color:inherit}
+  button{font:inherit;cursor:pointer}
+  .hide{display:none!important}
+
+  /* top bar, same pill as the website */
+  .top{width:100%;max-width:1180px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 14px}
+  .pill{display:flex;align-items:center;gap:12px;background:var(--brand-deep);color:#fff;border-radius:999px;padding:9px 10px 9px 12px;box-shadow:0 10px 30px -18px #000}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+  .brand svg{flex:none}
+  .brand b{font:700 .98rem var(--display);letter-spacing:.04em;display:block;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand small{display:block;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;opacity:.8}
+  .pill .sp{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:6px;font:600 .74rem var(--display);padding:7px 11px;border-radius:999px;background:#ffffff1f;white-space:nowrap}
+  .chip svg{width:14px;height:14px}
+  .back{font:600 .82rem var(--display);text-decoration:none;padding:8px 14px;border-radius:999px;background:#fff;color:var(--brand-deep);white-space:nowrap}
+
+  main{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:0 16px 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:26px;overflow:hidden;box-shadow:0 24px 60px -40px color-mix(in srgb,var(--brand-deep) 60%,#000)}
+
+  /* message screens (opening, not open yet, ended…) */
+  .msg{min-height:420px;display:grid;place-items:center;text-align:center;padding:48px 24px}
+  .msg .inner{max-width:440px}
+  .msg h1{font:700 1.45rem var(--display);color:var(--brand-deep);margin-bottom:10px}
+  .msg p{color:var(--muted);line-height:1.6}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:999px;padding:14px 26px;font:700 1rem var(--display);background:var(--brand);color:#fff;text-decoration:none}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+  .btn.line{background:#fff;color:var(--brand-deep);border:1px solid var(--line)}
+  .msg .btns{margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .pulse{width:68px;height:68px;border-radius:50%;margin:0 auto 20px;background:var(--brand);box-shadow:0 0 0 0 color-mix(in srgb,var(--brand) 60%,transparent);animation:p 1.8s infinite}
+  @keyframes p{70%{box-shadow:0 0 0 26px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .icon{width:68px;height:68px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;background:color-mix(in srgb,var(--brand) 12%,#fff);color:var(--brand-deep)}
+  .icon svg{width:30px;height:30px}
+
+  /* before you join */
+  .lobby{display:grid;grid-template-columns:1.12fr .88fr}
+  .lob-l{padding:22px}
+  .lob-r{padding:26px 26px 24px;background:color-mix(in srgb,var(--brand) 5%,#fff);border-left:1px solid var(--line)}
+  .eyebrow{font:700 .72rem var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--brand)}
+  .lob-l h1{font:800 clamp(1.4rem,3vw,1.9rem) var(--display);color:var(--brand-deep);margin:6px 0 14px;line-height:1.2}
+  .preview{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--brand) 60%,#000),var(--brand-deep) 75%)}
+  .preview video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+  .preview .ph{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:20px;font-size:.92rem;opacity:.9}
+  .preview .tools{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:10px}
+  .rb{width:46px;height:46px;border-radius:50%;border:0;background:#0000006b;color:#fff;display:grid;place-items:center;backdrop-filter:blur(6px)}
+  .rb svg{width:21px;height:21px}
+  .rb.off{background:#fff;color:#c0392b}
+  .dev{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.92rem;color:var(--muted)}
+  .dev b{color:var(--fg)}
+  .dev .ok{color:#178a50}.dev .bad{color:#c0392b}
+  .meter{flex:none;width:60px;height:6px;border-radius:9px;background:var(--line);overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:#2fb46c;transition:width .1s}
+  .tips{list-style:none;margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:.86rem;color:var(--muted)}
+  .tips li{padding-left:20px;position:relative}
+  .tips li:before{content:"✓";position:absolute;left:0;color:var(--brand);font-weight:800}
+
+  .person{display:flex;align-items:center;gap:14px}
+  .person img{width:62px;height:62px;border-radius:50%;object-fit:cover;object-position:center 20%;background:var(--line);flex:none}
+  .person .av{width:62px;height:62px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff;font:700 1.3rem var(--display)}
+  .person b{display:block;font:700 1.05rem var(--display);color:var(--brand-deep)}
+  .person span{display:block;font-size:.85rem;color:var(--muted);line-height:1.4}
+  .appt{margin:16px 0 18px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:.9rem;display:grid;gap:2px}
+  .appt b{font-family:var(--display);color:var(--brand-deep)}
+  .lob-r h2{font:700 .98rem var(--display);color:var(--brand-deep);margin-bottom:10px}
+  .notes{list-style:none;display:grid;gap:11px;font-size:.86rem;color:var(--muted);line-height:1.45}
+  .notes li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}
+  .notes svg{width:20px;height:20px;color:var(--brand)}
+  .notes b{color:var(--fg)}
+  .notes .em svg{color:#c0392b}
+  .consent{display:flex;gap:11px;align-items:flex-start;margin:18px 0 0;padding:14px;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--brand) 35%,#fff);background:#fff;font-size:.86rem;line-height:1.5;cursor:pointer}
+  .consent input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:var(--brand)}
+  .err{margin-top:12px;padding:10px 13px;border-radius:12px;background:#fff1ee;color:#a1351f;font-size:.88rem}
+  .joinbtn{width:100%;margin-top:16px}
+  .small{margin-top:10px;font-size:.78rem;color:var(--muted);text-align:center}
+
+  /* the call, framed in the card */
+  .stage{position:relative;height:clamp(340px,calc(100dvh - 215px),760px);background:#0b1416;overflow:hidden}
+  #remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0b1416}
+  #local{position:absolute;right:14px;bottom:14px;width:22%;max-width:210px;min-width:96px;aspect-ratio:3/4;object-fit:cover;border-radius:14px;border:2px solid #ffffff59;background:#1d2b2e;z-index:3;transform:scaleX(-1);box-shadow:0 8px 24px -10px #000}
+  #local.back{transform:none}
+  @media (min-width:800px){#local{aspect-ratio:16/10}}
+  .badge{position:absolute;left:14px;top:14px;z-index:4;max-width:62%;padding:8px 13px;border-radius:14px;background:#0000007a;backdrop-filter:blur(8px);color:#fff}
+  .badge b{display:block;font:700 .95rem var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge small{display:block;font-size:.76rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mark{position:absolute;right:14px;top:14px;z-index:4;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .8rem var(--display);max-width:40%}
+  .mark span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .private{position:absolute;left:14px;bottom:14px;z-index:4;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .72rem var(--display)}
+  .private svg{width:13px;height:13px}
+  .net{position:absolute;top:0;left:0;right:0;z-index:6;background:#e8a33d;color:#1d1d1d;text-align:center;font:700 .85rem var(--display);padding:7px}
+  .over{position:absolute;inset:0;z-index:2;display:grid;place-items:center;text-align:center;padding:24px;color:#fff;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--brand) 55%,#000),#0b1416 75%)}
+  .over h1{font:700 1.3rem var(--display);margin-bottom:8px}.over p{opacity:.8;line-height:1.5;max-width:380px;margin:0 auto}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--brand-deep);color:#fff}
+  .status{display:flex;align-items:center;gap:8px;font:600 .88rem var(--display)}
+  .status i{width:9px;height:9px;border-radius:50%;background:#ffffff66}.status i.on{background:#3ad07a}
+  .status .timer{opacity:.75;font-variant-numeric:tabular-nums}
+  .ctrls{display:flex;gap:8px;flex-wrap:wrap}
+  .cb{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px;border-radius:999px;border:0;background:#ffffff21;color:#fff;font:600 .86rem var(--display)}
+  .cb:hover{background:#ffffff33}
+  .cb svg{width:19px;height:19px}
+  .cb.off{background:#fff;color:#c0392b}
+  .cb.end{background:#d93a33}
+  .over .btn{margin-top:18px;background:#fff;color:var(--brand-deep)}
+  .over .alt{display:block;margin-top:12px;font-size:.85rem;opacity:.8}
+  .over .alt a{color:#fff;font-weight:700}
+  .cb.end:hover{background:#c22f29}
+  @media (max-width:640px){.badge{max-width:calc(100% - 28px)}.mark{top:auto;bottom:52px;left:14px;right:auto;max-width:calc(100% - 140px)}.cb .t{display:none}.cb{width:46px;padding:0;justify-content:center}.cb.end{width:auto;padding:0 16px}.cb.end .t{display:inline}}
+
+  /* full screen */
+  .card.full{position:fixed;inset:0;z-index:50;border-radius:0;border:0}
+  .card.full .stage{height:calc(100dvh - 66px - env(safe-area-inset-bottom))}
+
+  .foot{max-width:1180px;margin:0 auto;padding:4px 18px calc(18px + env(safe-area-inset-bottom));text-align:center;font-size:.78rem;color:var(--muted);line-height:1.6}
+  .foot a{color:var(--brand-deep);font-weight:700}
+
+  @media (max-width:860px){
+    .lobby{grid-template-columns:1fr}
+    .lob-r{border-left:0;border-top:1px solid var(--line)}
+    .tips{grid-template-columns:1fr}
+    .chip.rec .t{display:none}
+  }
+  @media (max-width:520px){.top{padding-left:10px;padding-right:10px}main{padding:0 10px 12px}.back{padding:8px 11px}.brand small{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="pill">
+    <a class="brand" id="brand" href="./"></a>
+    <span class="sp"></span>
+    <span class="chip rec" title="This consultation is not recorded"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span class="t">Private · not recorded</span></span>
+    <a class="back" id="back" href="./">Back</a>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="card">
+    <!-- message screens -->
+    <div class="msg" id="msg"><div class="inner"><div class="pulse"></div><h1>Opening your consultation room…</h1><p></p></div></div>
+
+    <!-- before you join -->
+    <div class="lobby hide" id="lobby">
+      <div class="lob-l">
+        <span class="eyebrow">Online video consultation</span>
+        <h1 id="lobTitle">Get ready for your consultation</h1>
+        <div class="preview">
+          <video id="prev" autoplay playsinline muted></video>
+          <div class="ph" id="prevPh">Starting your camera…</div>
+          <div class="tools"><button class="rb" id="pMic" aria-label="Microphone on or off" title="Microphone"></button><button class="rb" id="pCam" aria-label="Camera on or off" title="Camera"></button></div>
+        </div>
+        <div class="dev" id="dev">Checking your camera and microphone…</div>
+        <ul class="tips">
+          <li>Sit in a quiet, private place</li>
+          <li>Face a window or light</li>
+          <li>Keep reports and medicines nearby</li>
+          <li>Use headphones if you have them</li>
+        </ul>
+      </div>
+      <div class="lob-r">
+        <div class="person" id="person"></div>
+        <div class="appt" id="appt"></div>
+        <h2>Before you join</h2>
+        <ul class="notes" id="notes"></ul>
+        <label class="consent hide" id="consentBox"><input type="checkbox" id="consent"><span id="consentText"></span></label>
+        <div class="err hide" id="err"></div>
+        <button class="btn joinbtn" id="joinBtn" disabled>Join consultation</button>
+        <p class="small" id="joinNote"></p>
+      </div>
+    </div>
+
+    <!-- the call -->
+    <div class="hide" id="call">
+      <div class="stage" id="stage">
+        <video id="remote" autoplay playsinline></video>
+        <video id="local" autoplay playsinline muted></video>
+        <div class="badge"><b id="who">Consultation</b><small id="sub"></small></div>
+        <div class="mark" id="mark"></div>
+        <span class="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private · not recorded</span>
+        <div class="net hide" id="net">Connection lost. Reconnecting…</div>
+        <div class="over" id="center"><div><div class="pulse"></div><h1>Connecting…</h1><p></p></div></div>
+      </div>
+      <div class="bar">
+        <div class="status"><i id="dot"></i><span id="state">Waiting</span><span class="timer" id="timer"></span></div>
+        <div class="ctrls">
+          <button class="cb" id="mic" aria-label="Microphone"></button>
+          <button class="cb" id="cam" aria-label="Camera"></button>
+          <button class="cb" id="flip" aria-label="Switch camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9 13.5a3 3 0 0 0 5.6 1.5M15 12.5A3 3 0 0 0 9.4 11"/></svg><span class="t">Switch</span></button>
+          <button class="cb hide" id="backup" aria-label="Backup video" title="Use backup video if this call isn't working"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></svg><span class="t">Backup video</span></button>
+          <button class="cb" id="full" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t">Full screen</span></button>
+          <button class="cb end" id="end" aria-label="Leave"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-3.2 0-6.2.9-8.6 2.6-.5.4-.6 1.1-.3 1.6l1.6 2.3c.4.5 1.1.7 1.6.4l2.3-1.2c.4-.2.7-.7.7-1.2v-1.6c1.8-.5 3.6-.5 5.4 0v1.6c0 .5.3 1 .7 1.2l2.3 1.2c.5.3 1.2.1 1.6-.4l1.6-2.3c.3-.5.2-1.2-.3-1.6C18.2 9.9 15.2 9 12 9z"/></svg><span class="t">Leave</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<p class="foot" id="foot"></p>
+
+<script>
+(function () {
+const S = window.SITE || {}, $ = id => document.getElementById(id);
+const T = S.theme || {}, R = document.documentElement.style;
+if (T.brand) R.setProperty("--brand", T.brand);
+if (T.brandDeep) R.setProperty("--brand-deep", T.brandDeep);
+if (T.accent) R.setProperty("--accent", T.accent);
+if (T.light) R.setProperty("--light", T.light);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const API = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
+const q = new URLSearchParams(location.search);
+const A = { d: q.get("d") || "main", b: q.get("b") || "", t: q.get("t") || "" };
+const host = q.get("host") === "1";
+const hostToken = host ? (sessionStorage.getItem("dcbHost") || localStorage.getItem("docToken") || "") : "";
+const home = host ? "doctor.html" : "./";
+
+/* the doctor and clinic, from the website's settings */
+const C = S.contact || {}, B = S.brand || {}, SD = S.doctor || {};
+const DOCS = S.doctors || [];
+const DD = DOCS.find(x => x.id === A.d) || (DOCS.length === 1 ? DOCS[0] : null) || {};
+const regItem = DOCS.length > 1 ? null : [].concat((S.experience || {}).credentials || []).find(x => x && x.icon === "registration");   // one-doctor sites: "Reg. No." from Experience
+const DOC = {
+  name: DD.name || SD.name || "",
+  photo: DD.photo || SD.photo || "",
+  qual: DD.title || DD.qualification || SD.role || "",
+  reg: DD.reg || SD.reg || (regItem ? regItem.text : "")
+};
+const CLINIC = C.clinicName || B.title || DOC.name;
+const WA = String(C.whatsapp || "").replace(/\D/g, "");
+const LOGO = '<svg width="32" height="32" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M20 9v22M9 20h22" stroke="var(--brand)" stroke-width="5" stroke-linecap="round"/></svg>';
+const ICON = {
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  steth: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v6a5 5 0 0 0 10 0V3"/><path d="M11 14v2a5 5 0 0 0 10 0v-1"/><circle cx="21" cy="12" r="2"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>',
+  micOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M3 3l18 18"/></svg>',
+  cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>',
+  camOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3zM2 3l20 18"/></svg>',
+  done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>'
+};
+
+$("brand").innerHTML = `${LOGO}<span><b>${esc(B.title || CLINIC)}</b><small>Consultation room</small></span>`;
+$("brand").href = home;
+$("back").href = home; $("back").textContent = host ? "Dashboard" : "Back to website";
+$("mark").innerHTML = `${LOGO.replace('width="32" height="32"', 'width="22" height="22"')}<span>${esc(CLINIC)}</span>`;
+$("foot").innerHTML = `Online consultations are not for emergencies. In an emergency, call <b>112</b> (India) or your local emergency number, or go to the nearest hospital.` +
+  (WA && !host ? `<br>Trouble joining? <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a>` : "");
+
+let J = null, ws = null, pc = null, local = null, polite = true, makingOffer = false, ignoreOffer = false;
+let wsTries = 0, ended = false, inCall = false, connectedAt = 0, tick = null, facing = "user", pending = [];
+let meterStop = null;
+let mode = "own", daily = null, backupOffer = null;   // mode: "own" (our room) or "daily" (backup video)
+
+/* screens */
+function screen(id) { ["msg", "lobby", "call"].forEach(x => $(x).classList.toggle("hide", x !== id)); }
+function msg(title, text, btns, kind) {
+  screen("msg");
+  const top = kind === "wait" ? '<div class="pulse"></div>' : `<div class="icon">${ICON[kind || "info"] || ICON.info}</div>`;
+  $("msg").innerHTML = `<div class="inner">${top}<h1>${esc(title)}</h1><p>${text || ""}</p>${btns ? `<div class="btns">${btns}</div>` : ""}</div>`;
+}
+function over(title, text, extra) { $("center").classList.remove("hide"); $("center").innerHTML = `<div><div class="pulse"></div><h1>${esc(title)}</h1><p>${text || ""}</p>${extra || ""}</div>`; const b = $("tryBackup"); if (b) b.onclick = () => startBackup(false); }
+const hideOver = () => $("center").classList.add("hide");
+const when = iso => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
+async function askRoom(extra, path) {
+  const r = await fetch(API + (path || "/video/join"), { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, host ? { Authorization: "Bearer " + hostToken } : {}), body: JSON.stringify(Object.assign({}, A, extra || {})) });
+  return [r, await r.json()];
+}
+
+async function open() {
+  if (!API) return msg("Room not available", "This website's consultation room is not set up yet.", `<a class="btn" href="${home}">Back</a>`);
+  if (!A.b || (!host && !A.t)) return msg("Please use your consultation link", "Open the <b>Consultation room</b> link from your booking email, or the <b>Change or cancel</b> page.", `<a class="btn" href="./">Back to website</a>`);
+  if (host && !hostToken) return msg("Please log in", "Open the room from your dashboard (Start call).", `<a class="btn" href="doctor.html">Open dashboard</a>`);
+  let r, j;
+  try { [r, j] = await askRoom(); }
+  catch (e) { return msg("No connection", "Please check your internet and try again.", `<button class="btn" onclick="location.reload()">Try again</button>`); }
+  if (j.wait) {
+    const at = new Date(j.opens);
+    msg("Your room is not open yet", `It opens at <b>${esc(when(j.opens))}</b> (your time), shortly before your consultation. Keep this page open — it opens by itself.`, "", "wait");
+    setTimeout(open, Math.min(Math.max(at - Date.now() + 1000, 5000), 60000));
+    return;
+  }
+  if (!r.ok || !j.ok) return msg("Can't open the room", esc(j.error || "Please try again."), `<a class="btn" href="${home}">Back</a>`);
+  J = j; polite = j.role === "patient";
+  lobby();
+}
+
+/* before you join: camera check, who you're seeing, consent and the rules of an online consultation */
+function lobby() {
+  screen("lobby");
+  const patient = J.role === "patient";
+  const initials = s => String(s || "?").replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "").split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  if (patient) {
+    $("lobTitle").textContent = `Your consultation with ${DOC.name || J.other}`;
+    $("person").innerHTML = `${DOC.photo ? `<img src="${esc(DOC.photo)}" alt="">` : `<span class="av">${esc(initials(DOC.name || J.other))}</span>`}<div><b>${esc(DOC.name || J.other)}</b>${DOC.qual ? `<span>${esc(DOC.qual)}</span>` : ""}${DOC.reg ? `<span>${esc(DOC.reg)}</span>` : ""}</div>`;
+  } else {
+    $("lobTitle").textContent = `Consultation with ${J.other}`;
+    $("person").innerHTML = `<span class="av">${esc(initials(J.other))}</span><div><b>${esc(J.other)}</b><span>Patient</span></div>`;
+  }
+  $("appt").innerHTML = `<b>${esc(J.title || "Online video consultation")}</b><span>${esc(when(J.start))} (your time) · ${esc(CLINIC)}</span>`;
+
+  const notes = patient ? [
+    ["lock", `<b>Private and not recorded.</b> No video, audio or screenshots are saved by the clinic or this website. The call goes directly between you and the doctor, encrypted. If it can't connect, a backup video service is used — also private and not recorded.`],
+    ["steth", `<b>An online consultation has limits.</b> The doctor cannot examine you in person and may advise a clinic visit or tests if needed.`],
+    ["user", `<b>Be yourself, in a private place.</b> Please don't record the call, and tell the doctor if someone else is with you.`],
+    ["alert", `<b>Not for emergencies.</b> For chest pain, trouble breathing, heavy bleeding or fainting, call 112 or go to the nearest hospital.`, "em"]
+  ] : [
+    ["user", `<b>Confirm the patient.</b> Check their name and age at the start${J.consentAt ? "" : ", especially on a first visit"}.`],
+    ["shield", J.consentAt ? `<b>Consent given</b> by the patient on ${esc(when(J.consentAt))}.` : `<b>Consent:</b> the patient agrees to the online consultation before they can join.`],
+    ["lock", `<b>Not recorded.</b> Nothing of the call is saved. Write your notes and prescription as usual.`],
+    ["steth", `<b>Know the limits.</b> Advise a clinic visit or tests when an online consultation isn't enough.`]
+  ];
+  $("notes").innerHTML = notes.map(([i, t, cl]) => `<li class="${cl || ""}">${ICON[i]}<span>${t}</span></li>`).join("");
+
+  if (patient && J.needsConsent) {
+    $("consentBox").classList.remove("hide");
+    $("consentText").innerHTML = `I agree to an online video consultation with <b>${esc(DOC.name || J.other)}</b>. I understand its limits, that it is <b>not recorded</b>, and that it is not for emergencies.`;
+  }
+  $("joinNote").textContent = patient ? "The doctor joins at your appointment time. You'll wait in the room until then." : "Your patient will see you as soon as you join.";
+  const ready = () => { $("joinBtn").disabled = !local || (patient && J.needsConsent && !$("consent").checked); };
+  $("consent").onchange = ready;
+  $("joinBtn").onclick = () => enter().catch(e => { $("err").textContent = e.message || "Please try again."; $("err").classList.remove("hide"); $("joinBtn").disabled = false; $("joinBtn").textContent = "Join consultation"; });
+  startMedia().then(ready);
+}
+
+async function startMedia() {
+  $("dev").innerHTML = "Checking your camera and microphone…";
+  try {
+    local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } });
+  } catch (e) {
+    try { local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); } catch (e2) { local = null; }
+  }
+  if (!local) {
+    $("prevPh").textContent = "Camera and microphone are blocked";
+    $("dev").innerHTML = `<span class="bad">●</span> <span>Allow the camera and microphone for this website (tap the lock or camera icon in the address bar), then <a href="#" id="retry"><b>check again</b></a>.</span>`;
+    $("retry").onclick = e => { e.preventDefault(); startMedia().then(() => $("consent").onchange()); };
+    return;
+  }
+  const hasCam = local.getVideoTracks().length > 0;
+  $("prev").srcObject = local; $("prevPh").classList.toggle("hide", hasCam);
+  if (!hasCam) $("prevPh").textContent = "No camera found — you can join with sound only";
+  $("dev").innerHTML = `<span class="ok">●</span> <b>${hasCam ? "Camera and microphone ready" : "Microphone ready"}</b><span class="meter"><i id="lvl"></i></span>`;
+  meter();
+  paintMedia();
+}
+/* a small sound bar, so the patient sees the microphone works */
+function meter() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx || !local.getAudioTracks().length) return;
+    const ctx = new Ctx(), an = ctx.createAnalyser(); an.fftSize = 256;
+    ctx.createMediaStreamSource(local).connect(an);
+    const data = new Uint8Array(an.frequencyBinCount); let run = true;
+    document.addEventListener("click", () => { if (run && ctx.state === "suspended") ctx.resume().catch(() => {}); }, { once: true });
+    (function f() { if (!run) return; an.getByteFrequencyData(data); const v = data.reduce((a, b) => a + b, 0) / data.length; const el = $("lvl"); if (el) el.style.width = Math.min(100, v * 2.2) + "%"; requestAnimationFrame(f); })();
+    meterStop = () => { if (!run) return; run = false; meterStop = null; if (ctx.state !== "closed") ctx.close().catch(() => {}); };
+  } catch (e) {}
+}
+function paintMedia() {
+  const a = local && local.getAudioTracks()[0], v = local && local.getVideoTracks()[0];
+  const micOn = !!(a && a.enabled), camOn = !!(v && v.enabled);
+  $("pMic").innerHTML = micOn ? ICON.mic : ICON.micOff; $("pMic").classList.toggle("off", !micOn);
+  $("pCam").innerHTML = camOn ? ICON.cam : ICON.camOff; $("pCam").classList.toggle("off", !camOn); $("pCam").classList.toggle("hide", !v);
+  $("mic").innerHTML = (micOn ? ICON.mic : ICON.micOff) + `<span class="t">${micOn ? "Mute" : "Unmute"}</span>`; $("mic").classList.toggle("off", !micOn);
+  $("cam").innerHTML = (camOn ? ICON.cam : ICON.camOff) + `<span class="t">${camOn ? "Camera" : "Camera off"}</span>`; $("cam").classList.toggle("off", !camOn); $("cam").classList.toggle("hide", !v);
+  $("flip").classList.toggle("hide", !v);
+  $("local").classList.toggle("hide", !camOn);
+}
+const toggle = kind => { const t = local && (kind === "a" ? local.getAudioTracks()[0] : local.getVideoTracks()[0]); if (!t) return; t.enabled = !t.enabled; paintMedia(); };
+$("pMic").onclick = () => toggle("a"); $("pCam").onclick = () => toggle("v");
+$("mic").onclick = () => toggle("a"); $("cam").onclick = () => toggle("v");
+
+/* join: the patient's consent is saved by the helper first */
+async function enter() {
+  $("err").classList.add("hide");
+  $("joinBtn").disabled = true; $("joinBtn").textContent = "Joining…";
+  if (!J.ticket) {
+    const [r, j] = await askRoom({ consent: true });
+    if (!r.ok || !j.ok || !j.ticket) throw new Error(j.error || "Couldn't join. Please try again.");
+    J = j;
+  }
+  if (meterStop) meterStop();
+  inCall = true; screen("call");
+  $("who").textContent = J.role === "patient" ? (DOC.name || J.other) : J.other;
+  $("sub").textContent = J.role === "patient" ? (DOC.qual || J.title || "") : (J.title || "Patient");
+  $("local").srcObject = local; paintMedia();
+  $("backup").classList.toggle("hide", !J.backup);
+  waiting();
+  connect();
+}
+
+function waiting() {
+  const other = J.role === "doctor" ? "your patient" : esc(DOC.name || J.other);
+  if (mode === "daily") over("Backup video", `Waiting for ${other} to join the backup video…`);
+  else over(J.role === "doctor" ? "Waiting for your patient" : "Waiting for the doctor",
+    J.role === "doctor" ? "Your patient will appear here as soon as they join." : `${other} will join you here at your appointment time. Please stay on this page.`);
+  $("dot").classList.remove("on"); $("state").textContent = mode === "daily" ? "Backup video" : "Waiting";
+  // still not connected after 45 seconds: offer the backup video
+  clearTimeout(backupOffer);
+  if (J.backup && mode === "own") backupOffer = setTimeout(() => {
+    if (mode !== "own" || (pc && pc.connectionState === "connected")) return;
+    over("Video not connecting?", J.role === "doctor" ? "If your patient is here but you can't see each other, switch to the backup video." : "If the doctor is here but you can't see each other, switch to the backup video. You'll both move over together.",
+      `<button class="btn" id="tryBackup">Try backup video</button>`);
+  }, 45000);
+}
+
+/* signalling: the website's helper passes messages between the two sides */
+function connect() {
+  if (ended) return;
+  const u = API.replace(/^http/, "ws") + "/video/ws?ticket=" + encodeURIComponent(J.ticket);
+  ws = new WebSocket(u);
+  ws.onopen = () => { wsTries = 0; $("net").classList.add("hide"); };
+  ws.onmessage = e => { if (e.data !== "pong") onMsg(JSON.parse(e.data)).catch(err => console.warn(err)); };
+  ws.onclose = ev => {
+    if (ended) return;
+    if (ev.code === 4000) { ended = true; cleanup(); return msg("Opened on another screen", "This consultation is open on another device or tab.", `<a class="btn" href="${home}">Back</a>`); }
+    $("net").classList.remove("hide");
+    setTimeout(connect, Math.min(1000 * 2 ** wsTries++, 8000));
+  };
+}
+const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
+setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
+
+function newPC() {
+  if (pc) { try { pc.close(); } catch (e) {} }
+  pending = [];
+  pc = new RTCPeerConnection({ iceServers: J.iceServers || [] });
+  local.getTracks().forEach(t => pc.addTrack(t, local));
+  pc.ontrack = e => { $("remote").srcObject = e.streams[0]; };
+  pc.onicecandidate = e => { if (e.candidate) send({ type: "ice", c: e.candidate }); };
+  // only the doctor's side starts the call; the patient's side always answers (no two offers crossing after a reload)
+  pc.onnegotiationneeded = async () => {
+    if (polite) return;
+    try { makingOffer = true; await pc.setLocalDescription(); send({ type: "sdp", d: pc.localDescription }); }
+    catch (e) { console.warn(e); } finally { makingOffer = false; }
+  };
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState;
+    if (s === "connected") {
+      clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = "Connected"; $("net").classList.add("hide");
+      if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
+    } else if (s === "disconnected") { $("net").classList.remove("hide"); $("state").textContent = "Reconnecting…"; }
+    else if (s === "failed") { if (!polite) { try { pc.restartIce(); } catch (e) {} } }
+  };
+}
+
+async function onMsg(m) {
+  if (mode === "daily") { if (m.type === "peer-joined") send({ type: "backup" }); return; }   // the other side reloaded: bring them to the backup too
+  if (m.type === "backup") { startBackup(true); return; }
+  if (m.type === "welcome") { if (m.peers && m.peers.length) newPC(); return; }
+  if (m.type === "peer-joined") { newPC(); return; }
+  if (m.type === "peer-left" || m.type === "bye") { if (pc) { try { pc.close(); } catch (e) {} pc = null; } $("remote").srcObject = null; waiting(); return; }
+  if (!pc) newPC();
+  if (m.type === "sdp") {
+    const d = m.d, collision = d.type === "offer" && (makingOffer || pc.signalingState !== "stable");
+    ignoreOffer = !polite && collision;
+    if (ignoreOffer) return;
+    await pc.setRemoteDescription(d);
+    for (const c of pending.splice(0)) { try { await pc.addIceCandidate(c); } catch (e) {} }
+    if (d.type === "offer") { await pc.setLocalDescription(); send({ type: "sdp", d: pc.localDescription }); }
+  } else if (m.type === "ice") {
+    if (!pc.remoteDescription) { pending.push(m.c); return; }
+    try { await pc.addIceCandidate(m.c); } catch (e) { if (!ignoreOffer) console.warn(e); }
+  }
+}
+
+/* BACKUP VIDEO (Daily, through the clinic's helper): our own design stays; only the video engine changes */
+const DAILY_JS = "https://unpkg.com/@daily-co/daily-js";   // same script the old consult page used
+function loadDaily() {
+  if (window.Daily) return Promise.resolve();
+  return new Promise((ok, bad) => {
+    const fail = () => bad(new Error("Backup video couldn't load. Check your internet and try again."));
+    const s = document.createElement("script"); s.src = DAILY_JS; s.crossOrigin = "anonymous";
+    s.onload = () => window.Daily ? ok() : fail(); s.onerror = fail; document.head.appendChild(s);
+    setTimeout(() => { if (!window.Daily) fail(); }, 15000);
+  });
+}
+async function startBackup(fromOther) {
+  if (mode === "daily" || ended) return;
+  mode = "daily"; clearTimeout(backupOffer);
+  if (!fromOther) send({ type: "backup" });                 // the other side moves over with us
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = "Backup video"; $("backup").classList.add("hide");
+  over("Switching to backup video…", "This takes a few seconds. Please stay on this page.");
+  try {
+    const [r, j] = await askRoom({}, "/video/backup");
+    if (!r.ok || !j.ok) throw new Error(j.error || "Backup video couldn't start.");
+    await loadDaily();
+    const a = local && local.getAudioTracks()[0], v = local && local.getVideoTracks()[0];
+    daily = window.Daily.createCallObject({ audioSource: a || false, videoSource: v || false, subscribeToTracksAutomatically: true });
+    ["participant-joined", "participant-updated", "participant-left", "track-started", "track-stopped"].forEach(ev => daily.on(ev, paintDaily));
+    daily.on("network-connection", e => $("net").classList.toggle("hide", !(e && e.event === "interrupted")));
+    daily.on("error", e => over("Backup video stopped", esc((e && e.errorMsg) || "Please rejoin."), `<button class="btn" onclick="location.reload()">Rejoin</button>`));
+    await daily.join({ url: j.url, token: j.token });
+    paintDaily();
+  } catch (e) {
+    mode = "own"; if (daily) { try { daily.destroy(); } catch (x) {} daily = null; }
+    $("backup").classList.toggle("hide", !J.backup);
+    over("Backup video couldn't start", esc(e.message || "Please try again."), `<button class="btn" id="tryBackup">Try again</button>` + (WA && !host ? `<span class="alt">or <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a></span>` : ""));
+  }
+}
+let dailyStream = null;
+function paintDaily() {
+  if (!daily) return;
+  const p = Object.values(daily.participants()).find(x => !x.local);
+  if (!p) { dailyStream = null; $("remote").srcObject = null; waiting(); return; }
+  const tr = ["video", "audio"].map(k => p.tracks && p.tracks[k] && p.tracks[k].state === "playable" && p.tracks[k].persistentTrack).filter(Boolean);
+  const ids = tr.map(t => t.id).join(",");
+  if (!dailyStream || dailyStream._ids !== ids) { dailyStream = new MediaStream(tr); dailyStream._ids = ids; $("remote").srcObject = dailyStream; }
+  clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = "Connected · backup";
+  if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
+}
+$("backup").onclick = () => { if (confirmBackup()) startBackup(false); };
+const confirmBackup = () => mode === "own";
+
+/* buttons */
+$("flip").onclick = async () => {
+  const old = local && local.getVideoTracks()[0]; if (!old) return;
+  facing = facing === "user" ? "environment" : "user";
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+    const nt = s.getVideoTracks()[0]; nt.enabled = old.enabled;
+    if (pc) { const sender = pc.getSenders().find(x => x.track && x.track.kind === "video"); if (sender) await sender.replaceTrack(nt); }
+    if (daily) await daily.setInputDevicesAsync({ videoSource: nt });
+    local.removeTrack(old); old.stop(); local.addTrack(nt);
+    $("local").srcObject = local; $("local").classList.toggle("back", facing === "environment");
+  } catch (e) { facing = facing === "user" ? "environment" : "user"; }
+};
+function setFull(on) {
+  $("card").classList.toggle("full", on);
+  document.body.style.overflow = on ? "hidden" : "";
+  $("full").querySelector(".t").textContent = on ? "Exit full screen" : "Full screen";
+}
+$("full").onclick = () => {
+  const on = !$("card").classList.contains("full"); setFull(on);
+  try { if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+};
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && $("card").classList.contains("full")) setFull(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("card").classList.contains("full")) setFull(false); });
+
+$("end").onclick = () => {
+  ended = true; send({ type: "bye" }); cleanup();
+  const doc = J && J.role === "doctor";
+  msg("You left the consultation",
+    doc ? "You can open the room again from your dashboard." : `Thank you for consulting ${esc(DOC.name || "the doctor")}. Your prescription or advice will reach you from the clinic. If you were disconnected by mistake, open your consultation link again.`,
+    `<a class="btn" href="${home}">${doc ? "Back to dashboard" : "Back to website"}</a>${doc ? "" : `<button class="btn line" onclick="location.reload()">Rejoin</button>`}`, "done");
+};
+function cleanup() {
+  clearInterval(tick); inCall = false; setFull(false);
+  if (meterStop) meterStop();
+  clearTimeout(backupOffer);
+  if (daily) { try { daily.leave().catch(() => {}).finally(() => { try { daily.destroy(); } catch (e) {} daily = null; }); } catch (e) {} }
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  if (ws) { try { ws.close(); } catch (e) {} }
+  if (local) local.getTracks().forEach(t => t.stop());
+  $("remote").srcObject = null; $("net").classList.add("hide");
+}
+window.addEventListener("pagehide", () => { if (!ended && inCall) send({ type: "bye" }); });
+
+open();
+})();
+</script>
+</body>
+</html>
