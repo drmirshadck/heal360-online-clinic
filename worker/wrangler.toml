@@ -50,7 +50,7 @@ new_sqlite_classes = ["Room"]
 
 [[kv_namespaces]]
 binding = "PUSH"
-id = "REPLACE_WITH_KV_ID"
+id = "1b5c8608d48f479ab4ec2ad8afd9d4bc"
 
 # Secrets (never in this file):
 #   one doctor:  CAL_API_KEY, DAILY_API_KEY, PIN_HASH          -> node make-secrets.mjs <PIN>
