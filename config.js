@@ -8,7 +8,7 @@ window.SITE = {
   /* ---- used by the booking calendar and doctor pages ---- */
   brand: { title: "HEAL 360", subtitle: "Online Clinic" },
   theme: { brand: "#1a73e8", brandDeep: "#0b2e6f", accent: "#188038", light: "#bcd7ff" },
-  doctor: { name: "Heal 360 Online Clinic", shortName: "Heal 360", photo: "logo-real/mark-160.png", role: "Online homoeopathy clinic" },
+  doctor: { name: "Heal 360 Online Clinic", shortName: "Heal 360", photo: "logo-real/mark-256.png", role: "Online homoeopathy clinic" },
   contact: { phoneDisplay: "+91 75111 36045", whatsapp: "917511136045", clinicName: "Heal 360 Online Clinic" },
   payment: { upiId: "", payeeName: "Heal 360 Online Clinic" },
   cal: { username: "", doctorEmail: "" },

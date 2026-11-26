@@ -30,45 +30,26 @@ function panel(){
     ${d.bio.map(p=>`<p>${esc(p)}</p>`).join('')}
     <div class="chips">${d.areas.map(a=>`<span>${esc(a)}</span>`).join('')}</div>
     <p class="vision">${esc(d.vision)}</p>
-    <a class="btn" href="#book" data-book="${d.id}">Book with ${esc(d.name.split(' ').slice(0,2).join(' '))}</a>
+    <a class="btn" href="#book" data-book data-doc="${d.id}">Book with ${esc(d.name.split(' ').slice(0,2).join(' '))}</a>
     <div class="meta"><span>${esc(d.years)} of experience</span><span>TCMC Reg. No. ${esc(d.reg)}</span></div>
   </div>`;stag();
 }
 function pick(id,scroll){cur=id;tabs();panel();if(scroll)document.getElementById('doctors').scrollIntoView({behavior:'smooth'});}
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)pick(b.dataset.id)});
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b){stopAuto();pick(b.dataset.id)}});
+/* doctors change by themselves; stops once the visitor touches the section */
+let auto=true;const stopAuto=()=>{auto=false};
+const dsec=document.getElementById('doctors');let inView=false;
+new IntersectionObserver(en=>{inView=en[0].isIntersecting},{threshold:.25}).observe(dsec);
+['pointerdown','touchstart','keydown','wheel'].forEach(ev=>dsec.addEventListener(ev,stopAuto,{passive:true}));
+setInterval(()=>{if(!auto||!inView||document.hidden||document.body.classList.contains('intro'))return;const i=D.findIndex(d=>d.id===cur);pick(D[(i+1)%D.length].id)},6500);
 $('#trio').addEventListener('click',e=>{const c=e.target.closest('.hero-card');if(c){e.preventDefault();pick(c.dataset.doc,true)}});
 tabs();panel();
 
-/* booking window */
-const M=$('#modal'),B=$('#mbody');let chosen=null;
-function open(id){
-  chosen=id||null;M.hidden=false;document.body.style.overflow='hidden';render();
-}
-function close(){M.hidden=true;document.body.style.overflow=''}
-function render(){
-  B.innerHTML=`
-  <div class="pick">${D.map(d=>`<button type="button" class="opt ${chosen===d.id?'on':''}" data-id="${d.id}"><img src="${d.photo}" alt=""><span><strong>${esc(d.name)}</strong><small>${esc(d.role)}</small></span></button>`).join('')}</div>
-  <form id="f">
-    <label for="n">Your name</label><input id="n" required autocomplete="name">
-    <label for="w">WhatsApp number</label><input id="w" required inputmode="tel" autocomplete="tel" placeholder="+91 …">
-    <label for="t">Preferred day and time</label><input id="t" required placeholder="e.g. Monday evening">
-    <label for="c">What would you like help with? (optional)</label><textarea id="c" rows="2"></textarea>
-    <button class="btn" type="submit">Request my consultation</button>
-    <p class="note">Online consultations are not for emergencies. Call 112 in an emergency.</p>
-  </form>`;
-}
-B.addEventListener('click',e=>{const o=e.target.closest('.opt');if(o){chosen=o.dataset.id;B.querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o))}});
-B.addEventListener('submit',e=>{
-  e.preventDefault();
-  if(!chosen){alert('Please choose your doctor first.');return}
-  const d=D.find(x=>x.id===chosen);
-  const msg=`Hello Heal 360, I would like to book an online consultation with ${d.name}.\nName: ${$('#n').value}\nWhatsApp: ${$('#w').value}\nPreferred time: ${$('#t').value}\n${$('#c').value?('Concern: '+$('#c').value):''}`;
-  window.open('https://wa.me/'+S.whatsapp+'?text='+encodeURIComponent(msg),'_blank');
-  close();
-});
-$('#mx').onclick=close;M.addEventListener('click',e=>{if(e.target===M)close()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-book]');if(b){e.preventDefault();open(b.dataset.book||null)}});
+/* booking: booking.js opens the calendar for any [data-book] button */
+document.addEventListener('click',e=>{const b=e.target.closest('[data-book]');if(!b)return;e.preventDefault();
+  /* until the calendar helper is connected, booking requests go to the clinic WhatsApp */
+  if(!(S.helper&&S.helper.url)){e.stopPropagation();const d=D.find(x=>x.id===b.dataset.doc);
+    window.open('https://wa.me/'+S.whatsapp+'?text='+encodeURIComponent('Hello Heal 360, I would like to book an online consultation'+(d?' with '+d.name:'')+'.'),'_blank')}},true);
 
 /* header + reveal */
 const top=$('#top');addEventListener('scroll',()=>top.classList.toggle('scrolled',scrollY>8),{passive:true});
