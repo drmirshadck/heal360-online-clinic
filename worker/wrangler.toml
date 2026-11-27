@@ -6,7 +6,7 @@ workers_dev = true
 keep_vars = true          # a deploy never removes values added in the Cloudflare dashboard
 
 [vars]
-ALLOWED_ORIGINS = "https://drmirshadck.github.io"   # the doctor's site, e.g. https://drsample.com,https://www.drsample.com
+ALLOWED_ORIGINS = "https://www.heal360homoeopathy.com,https://heal360homoeopathy.com,https://drmirshadck.github.io"   # the doctor's site, e.g. https://drsample.com,https://www.drsample.com
 VAPID_SUBJECT = "mailto:support@arshees.com"
 # OWN CALENDAR (no Cal.com): "own". Leave out or "cal" = Cal.com as before.
 CALENDAR = "own"
