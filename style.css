@@ -121,3 +121,14 @@ h1{font-size:clamp(34px,4.6vw,64px);margin-bottom:16px}
 .dpic img{height:100%;width:auto;max-width:92%;object-fit:contain;object-position:bottom;margin:0}
 @media(max-width:860px){.fig img{height:50vw}.fig+.fig{margin-left:-8vw}.dpic{height:360px}.dpic img{width:auto}}
 @media(max-width:860px){.chip{width:92%}.chip b{font-size:10px;white-space:normal}}
+
+.room-who{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.room-who .ghost{cursor:pointer;font:inherit;background:transparent}
+.room-link{margin-top:18px;max-width:460px}
+.room-link label{display:block;font-size:.9rem;opacity:.85;margin-bottom:8px}
+.room-link div{display:flex;gap:8px}
+.room-link input{flex:1;min-width:0;padding:13px 16px;border-radius:99px;border:1px solid #ffffff55;background:#ffffff14;color:#fff;font:inherit}
+.room-link input::placeholder{color:#ffffff88}
+.room-link button{cursor:pointer;font:inherit;background:#fff;color:#0f2e2c;border-color:#fff}
+.room-link p{color:#ffd9d9;font-size:.85rem;margin:8px 0 0;min-height:1em}
+.room-link small{display:block;opacity:.7;margin-top:6px;line-height:1.5}

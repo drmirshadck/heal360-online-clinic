@@ -141,7 +141,7 @@ function showLogin(msg) {
   $("pin").focus();
   $("lf").onsubmit = async e => {
     e.preventDefault(); const b = $("lb"); b.disabled = true; $("le").textContent = "";
-    try { const d = await api("/login", { method: "POST", body: JSON.stringify({ pin: $("pin").value.trim() }) }); token = d.token; store.set(token); me = d.doctor || null; meStore.set(me); applyMe(); if (new URLSearchParams(location.search).get("next") === "room") return openRoom(); start(); }
+    try { const d = await api("/login", { method: "POST", body: JSON.stringify({ pin: $("pin").value.trim() }) }); token = d.token; store.set(token); me = d.doctor || null; meStore.set(me); applyMe(); start(); }
     catch (er) { $("le").textContent = er.message; b.disabled = false; $("pin").select(); }
   };
 }
@@ -171,7 +171,11 @@ function render() {
     ? `<div class="notify"><span>Get a notification on this phone when a patient books.</span><button class="btn" id="nb">Turn on</button></div>`
     : (!canNotify && /iphone|ipad/i.test(navigator.userAgent) ? `<div class="notify"><span>On iPhone, add this page to your Home Screen (Share → Add to Home Screen) to get booking notifications.</span></div>` : "");
   const list = tab === "pending" ? data.pending : data.upcoming;
-  $("main").innerHTML = `${notifyBox}
+  // a consultation that can be joined now (an hour before until 3 hours after): a big Join button at the top
+  const nowMs = Date.now();
+  const joinable = data.own ? data.upcoming.find(b => nowMs >= Date.parse(b.start) - 60 * 60e3 && nowMs <= Date.parse(b.end || b.start) + 180 * 60e3) : null;
+  const joinBox = joinable ? `<div class="notify" style="background:var(--brand);color:#fff"><span><b>${esc(joinable.name)}</b> · ${esc(typeName(joinable.title))} · ${esc(time(joinable.start))}</span><button class="btn" style="background:#fff;color:var(--deep)" data-call="1" data-uid="${esc(joinable.uid)}">Join call</button></div>` : "";
+  $("main").innerHTML = `${joinBox}${notifyBox}
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" data-t="pending" aria-selected="${tab === "pending"}">Requests${p ? `<span class="n">${p}</span>` : ""}</button>
       <button class="tab" role="tab" data-t="upcoming" aria-selected="${tab === "upcoming"}">Upcoming${u ? `<span class="n">${u}</span>` : ""}</button>
@@ -425,7 +429,7 @@ async function enablePush() {
   } catch (e) { toast(e.message || "Could not turn on notifications."); }
 }
 
-token ? (new URLSearchParams(location.search).get("next") === "room" ? openRoom() : start()) : showLogin();
+token ? start() : showLogin();
 })();
 </script>
 </body>

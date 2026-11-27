@@ -29,7 +29,7 @@
     <a href="#care">Care</a>
     <a href="#steps">How it works</a>
     <a href="#fees">Fees</a>
-    <a href="room.html">Consultation room</a>
+    <a href="#room">Consultation room</a>
     <a href="#faq">Questions</a>
   </nav>
   <a class="go sm" href="#book" data-book>Book <i>&#8599;</i></a>
@@ -114,7 +114,16 @@
       <h2 class="light">Your private<br>consultation room.</h2>
       <p>After your booking is confirmed you receive a personal link. Open it at your time and your doctor is there, in your own private room on this website.</p>
       <ul class="ticks"><li>Private to your booking, never recorded</li><li>Opens 15 minutes before your time</li><li>Works on any phone or computer</li></ul>
-      <a class="ghost" href="room.html">Open the consultation room &#8599;</a>
+      <div class="room-who">
+        <button class="ghost" type="button" id="rwPatient">I'm a patient</button>
+        <a class="ghost" href="doctor.html?next=room" id="rwDoctor">I'm a doctor</a>
+      </div>
+      <form class="room-link" id="rwForm" hidden>
+        <label for="rwLink">Paste the consultation link from your booking email</label>
+        <div><input id="rwLink" type="text" inputmode="url" placeholder="https://…/room.html?…" autocomplete="off"><button class="ghost" type="submit">Join</button></div>
+        <p id="rwErr" role="alert"></p>
+        <small>Can't find it? Open your booking email and tap <b>Consultation room</b>, or use <b>Change or cancel</b> on the booking page. The room opens 15 minutes before your time.</small>
+      </form>
     </div>
     <div class="room-demo reveal" aria-hidden="true">
       <div class="rd-bar"><img src="logo-real/globe-mark.png" alt="" width="24" height="24"><b>HEAL 360</b><small>Consultation room</small><span>Private &middot; not recorded</span></div>
@@ -157,7 +166,7 @@
   <div class="wrap foot">
     <div><b class="fname">Heal 360 Online Clinic</b><span class="slogan sm">Care that connects globally.</span><p>Online homoeopathic consultations<br><a href="tel:+917511136045">+91 75111 36045</a><br><a href="mailto:care@heal360homoeopathy.com">care@heal360homoeopathy.com</a></p></div>
     <div class="regs"><b>TCMC registration</b><br>Dr. Seena Naseem K.A. · 10868<br>Dr. Shameema · 10829<br>Dr. Musheera K. · 11350</div>
-    <div class="small"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a><br>Online consultations are not for emergencies. In an emergency call 112.<br><a href="doctor.html" class="quiet" aria-label="Clinic login">©</a> 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
+    <div class="small"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a><br>Online consultations are not for emergencies. In an emergency call 112.<br>© 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
   </div>
 </footer>
 
@@ -172,6 +181,17 @@
 var by=function(k){return T.filter(function(x){return x.calSlug===k})[0]||{fee:0}};
 var cards=[["New consultation","\u20B9"+by("online-video-consultation").fee,"Day 1","Your first consultation, with a complete case history. Starts your 14-day cycle."],["Free follow-up","Free","Within 7 days","Come back within 7 days of your consultation at no charge."],["Follow-up","\u20B9"+by("follow-up-paid").fee,"Days 8 to 14","A review in the second week. From day 15 a new consultation applies."]];
 g.innerHTML=cards.map(function(c){return '<article class="cc reveal in"><b>'+c[1]+'</b><h3>'+c[0]+'</h3><p><span class="chip2">'+c[2]+'</span><br>'+c[3]+'</p></article>'}).join("")}catch(e){}})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById("rwPatient"),f=document.getElementById("rwForm"),i=document.getElementById("rwLink"),e=document.getElementById("rwErr");
+  if(!b||!f)return;
+  b.onclick=function(){f.hidden=!f.hidden;if(!f.hidden)i.focus();};
+  f.onsubmit=function(ev){ev.preventDefault();e.textContent="";
+    var v=i.value.trim(),m=v.match(/room\.html\?([^\s#]+)/);
+    if(!m){e.textContent="That doesn't look like a consultation link. Please paste the whole link from your email.";return;}
+    location.href="room.html?"+m[1];};
+})();
 </script>
 </body>
 </html>
