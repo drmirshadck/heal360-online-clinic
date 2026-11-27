@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&family=Nunito+Sans:wght@400;600;700&family=Google+Sans+Flex:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>')</script><!-- always the newest settings -->
 <!-- Standard package: the doctor's private page. Details come from config.js; secrets stay in the Cloudflare helper. -->
 <style>
@@ -22,7 +22,7 @@
   .hbtn{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:700;font-size:13.5px}
   main{max-width:760px;margin:0 auto;padding:16px}
   .login{max-width:360px;margin:12vh auto 0;background:var(--card);border-radius:22px;padding:28px;text-align:center;box-shadow:0 20px 50px -30px rgba(0,0,0,.35)}
-  .login img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 20%;margin-bottom:12px}
+  .login .dpic{margin-bottom:12px}
   .login h1{font:700 22px Outfit;color:var(--deep)}
   .login p{color:var(--muted);margin:6px 0 18px}
   .pin{width:100%;font:700 26px Outfit;letter-spacing:.4em;text-align:center;padding:14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:14px}
@@ -81,10 +81,33 @@
   .tag.due{background:#ffe9b8;color:#7a5200}.tag.paid{background:#d6f0dc;color:var(--ok)}
   dialog input[type=number],dialog input[type=text]{width:100%;font:inherit;font-size:16px;border:1.5px solid var(--line);border-radius:12px;padding:11px;margin:6px 0 4px}
   .save{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}
+
+  /* match the Heal 360 website: colours, fonts, logo */
+  :root{--deep:#173B3D;--brand:#1f4d50;--bg:#FEF9EF;--line:#eadfcb;--muted:#5d7274;--fg:#173B3D}
+  body{font-family:"DM Sans","Google Sans Flex","Nunito Sans",system-ui,sans-serif;background:radial-gradient(1200px 500px at 50% -120px,#f6ecdd 0,#FEF9EF 70%) fixed}
+  header{background:linear-gradient(180deg,#1b4446,#173B3D);box-shadow:0 8px 24px -16px rgba(7,40,42,.7)}
+  .hlogo{display:block;flex:none}.hlogo img{height:58px;width:auto;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .hwho{margin-left:auto;margin-right:8px}body:has(.login) .hwho{display:none}body:has(.login) header>div:last-child{margin-left:auto}.btn{white-space:nowrap}
+  header b{font-family:"DM Sans",Outfit,sans-serif;font-weight:700}
+  main{max-width:980px;padding:22px 18px 80px;display:grid;grid-template-columns:1fr 1fr;gap:0 14px;align-content:start}
+  main>*{grid-column:1/-1}main>.notify{grid-column:auto}
+  .notify{background:#fff;border:1px solid var(--line);box-shadow:0 10px 24px -20px rgba(23,59,61,.5);border-radius:18px;padding:14px 16px}
+  .tab{border-radius:16px;border:1px solid var(--line)}
+  .tab[aria-selected=true]{background:#173B3D;border-color:#173B3D}
+  .card{border-radius:20px;box-shadow:0 10px 26px -22px rgba(23,59,61,.55)}
+  .btn{background:#173B3D}.btn.ok{background:var(--ok)}.btn.wa{background:#25d366}.btn.ghost{background:transparent}.btn.no{background:#fff}
+  .empty{padding:46px 10px;color:var(--muted)}
+  main::after{content:"";grid-column:1/-1;height:210px;margin-top:26px;background:url(logo-real/heal360-logo-transparent.png?v=4) center/contain no-repeat;opacity:.1}
+  .login{box-shadow:0 24px 60px -34px rgba(23,59,61,.5);max-width:400px}
+  .login .llogo{width:min(260px,80%);height:auto;border-radius:0;margin:0 auto 10px;display:block}
+  .login .dpic{width:72px;height:72px;border-radius:50%;object-fit:cover;object-position:center 20%;margin-bottom:8px}
+  .login h1{font-family:"DM Sans",Outfit,sans-serif}
+  main:has(.login)::after{display:none}main:has(.login){display:block}
+  @media(max-width:700px){header{flex-wrap:wrap;row-gap:8px}.hlogo{order:1}header>div:last-child{order:2;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}.hwho{order:3;width:100%;margin:0}.hbtn{padding:7px 11px;font-size:13px}main{grid-template-columns:1fr}main>.notify{grid-column:1/-1}.hlogo img{height:44px}.hwho b{font-size:15px}.hwho small{display:block}.hwho img{width:38px!important;height:38px!important}}
 </style>
 </head>
 <body>
-<header><div style="display:flex;align-items:center;gap:11px;min-width:0"><img id="dp" alt="" hidden style="width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:center top;border:2px solid rgba(255,255,255,.7);flex:none;background:#fff"><div style="min-width:0"><b id="dn"></b><small>Doctor dashboard</small></div></div><div style="display:flex;gap:6px;align-items:center"><a class="hbtn" href="./" style="text-decoration:none">Home</a><span id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></span></div></header>
+<header><a class="hlogo" href="./" aria-label="Heal 360 home"><img src="logo-real/heal360-logo-dark.png?v=4" alt="Heal 360 Homoeopathic Online Clinic" width="1100" height="579"></a><div class="hwho" style="display:flex;align-items:center;gap:11px;min-width:0"><img id="dp" alt="" hidden style="width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:center top;border:2px solid rgba(255,255,255,.7);flex:none;background:#fff"><div style="min-width:0"><b id="dn"></b><small>Doctor dashboard</small></div></div><div style="display:flex;gap:6px;align-items:center"><a class="hbtn" href="inbox.html" id="waLink" style="text-decoration:none">WhatsApp</a><a class="hbtn" href="./" style="text-decoration:none">Home</a><span id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></span></div></header>
 <main id="main"></main>
 <dialog id="dlg"><h3>Decline this booking?</h3><p class="note">The patient gets an email that the booking was declined. If they already paid, refund them by UPI.</p><textarea id="reason">The doctor is not available at this time. Please book another slot.</textarea><div class="acts"><button class="btn ghost" id="dNo">Keep it</button><button class="btn no" id="dYes">Decline</button></div></dialog>
 <dialog id="mdlg"><h3 id="mTitle">Medicine amount</h3><p class="note" id="mSub"></p>
@@ -135,7 +158,7 @@ async function api(path, opts = {}) {
 function showLogin(msg) {
   $("hdrBtns").hidden = true;
   const many = !!DOCS && !me;
-  $("main").innerHTML = `<form class="login" id="lf">${many ? "" : `<img src="${esc(D.photo)}" alt="">`}<h1>${esc(many ? (S.contact.clinicName || "Doctor login") : D.name)}</h1><p>${many ? "Doctors: enter your own PIN to see your bookings." : "Enter your PIN to see your bookings."}</p>
+  $("main").innerHTML = `<form class="login" id="lf"><img class="llogo" src="logo-real/heal360-logo-transparent.png?v=4" alt="Heal 360 Homoeopathic Online Clinic">${many ? "" : `<img class="dpic" src="${esc(D.photo)}" alt="">`}<h1>${esc(many ? (S.contact.clinicName || "Doctor login") : D.name)}</h1><p>${many ? "Doctors: enter your own PIN to see your bookings." : "Enter your PIN to see your bookings."}</p>
     <input class="pin" id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" aria-label="PIN" required>
     <button class="btn full" id="lb">Open dashboard</button><p class="err" id="le">${esc(msg || "")}</p></form>`;
   $("pin").focus();

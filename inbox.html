@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>WhatsApp inbox</title>
+<link rel="icon" href="logo-real/mark-256.png">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+<script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>')</script>
+<!-- Doctors only: patients' WhatsApp replies. Locked with each doctor's own PIN (same login as the dashboard). -->
+<style>
+  :root{--brand:#0e8a8a;--deep:#074a50;--accent:#d94a3d;--light:#9fe3dc;--bg:#f3f7f8;--card:#fff;--fg:#1d3239;--muted:#5d727a;--line:#e1eaec;--ok:#1e8e3e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Nunito Sans",system-ui,sans-serif;background:var(--bg);color:var(--fg);min-height:100dvh}
+  button{font:inherit;cursor:pointer}
+  header{background:var(--deep);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:5}
+  header b{font:700 17px Outfit}header small{display:block;opacity:.75;font-size:12.5px}
+  .hbtn{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:8px 12px;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
+  header>div:last-child{flex:none}@media(max-width:520px){body.inchat #home,body.inchat #toDash{display:none}}
+  main{max-width:760px;margin:0 auto;padding:14px}
+  .login{max-width:360px;margin:12vh auto 0;background:var(--card);border-radius:22px;padding:28px;text-align:center;box-shadow:0 20px 50px -30px rgba(0,0,0,.35)}
+  .login h1{font:700 22px Outfit;color:var(--deep)}.login p{color:var(--muted);margin:6px 0 18px}
+  .pin{width:100%;font:700 26px Outfit;letter-spacing:.4em;text-align:center;padding:14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:12px 20px;font-weight:700;font-size:15px;background:var(--deep);color:#fff}
+  .btn.full{width:100%}.btn:disabled{opacity:.55;cursor:wait}
+  .err{color:#b3261e;min-height:1.3em;margin-top:10px;font-size:14px}
+  .row{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:9px;cursor:pointer;width:100%;text-align:left}
+  .av{flex:none;width:44px;height:44px;border-radius:50%;background:#dff3ef;color:var(--deep);display:grid;place-items:center;font:700 17px Outfit}
+  .row .mid{flex:1;min-width:0}.row b{display:block;font-size:15.5px}.row span.l{display:block;color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .rt{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+  .n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:11px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:0 6px;margin-top:5px}
+  .empty{text-align:center;color:var(--muted);padding:44px 10px;line-height:1.5}
+  .note{font-size:13px;color:var(--muted)}
+  .chat{display:flex;flex-direction:column;height:calc(100dvh - 70px - env(safe-area-inset-top));max-width:760px;margin:0 auto}
+  .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .b{max-width:82%;padding:9px 12px;border-radius:16px;font-size:15px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
+  .b small{display:block;margin-top:4px;font-size:11px;opacity:.65}
+  .in{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
+  .out{align-self:flex-end;background:#d8f5df;border-bottom-right-radius:5px}
+  .day{align-self:center;font-size:12px;color:var(--muted);background:#e6eef0;border-radius:99px;padding:3px 12px;margin:6px 0}
+  .compose{background:#fff;border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+  .compose .line{display:flex;gap:8px;align-items:flex-end}
+  textarea{flex:1;font:inherit;font-size:16px;border:1.5px solid var(--line);border-radius:16px;padding:10px 12px;resize:none;max-height:140px;min-height:44px}
+  .send{flex:none;background:#25d366;border:0;color:#fff;border-radius:50%;width:46px;height:46px;font-size:20px;font-weight:700}
+  .send:disabled{opacity:.5}
+  .closed{background:#fff8e6;border:1px solid #f3dfa8;border-radius:12px;padding:10px 12px;font-size:13.5px;color:#6b5314}
+  .wa{display:inline-block;margin-top:6px;color:#128c4a;font-weight:700;font-size:13.5px}
+  .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--deep);color:#fff;padding:11px 18px;border-radius:99px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header><div style="min-width:0;flex:1"><b id="t" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WhatsApp inbox</b><small id="sub"></small></div><div style="display:flex;gap:6px"><a class="hbtn" href="doctor.html" id="toDash" hidden>Dashboard</a><a class="hbtn" href="./" id="home">Home</a><button class="hbtn" id="out" hidden>Lock</button></div></header>
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+const S = window.SITE || {}, API = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const store = { get(){ try { return localStorage.getItem("docToken") || ""; } catch(e){ return ""; } }, set(v){ try { v ? localStorage.setItem("docToken", v) : localStorage.removeItem("docToken"); } catch(e){} } };
+let token = store.get(), me = "", poll = null, openPhone = "", threads = [], lastCount = -1;
+document.title = "WhatsApp inbox · " + ((S.doctor && S.doctor.shortName) || "");
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 2800); }
+async function api(path, opts = {}) {
+  if (!API) throw new Error("The inbox is not connected yet.");
+  const r = await fetch(API + path, Object.assign({}, opts, { headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}, opts.headers || {}) }));
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && token) { token = ""; store.set(""); stop(); showLogin(); throw new Error(j.error || "Please enter your PIN again."); }
+  if (!r.ok) throw new Error(j.error || "Something went wrong.");
+  return j;
+}
+const stop = () => { clearInterval(poll); poll = null; };
+function ago(ms) {
+  const d = new Date(ms), n = new Date(), same = d.toDateString() === n.toDateString();
+  if (same) return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  const y = new Date(n - 864e5).toDateString() === d.toDateString();
+  return y ? "Yesterday" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+const label = t => t.name || ("+" + t.phone);
+
+function showLogin() {
+  stop(); $("out").hidden = true; $("toDash").hidden = true; $("sub").textContent = "";
+  $("main").innerHTML = `<div class="login"><h1>WhatsApp inbox</h1><p>Enter your own PIN to read and answer patients' WhatsApp messages.</p><input class="pin" id="pin" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••"><button class="btn full" id="go">Open inbox</button><p class="err" id="e"></p></div>`;
+  const go = async () => {
+    const pin = $("pin").value.trim(); if (!/^\d{4,8}$/.test(pin)) { $("e").textContent = "Please enter your PIN (4 to 8 digits)."; return; }
+    $("go").disabled = true; $("e").textContent = "";
+    try { const j = await api("/login", { method: "POST", body: JSON.stringify({ pin }) }); token = j.token; store.set(token); try { localStorage.setItem("docMe", JSON.stringify(j.doctor)); } catch(e){} me = j.doctor.name; await showList(); }
+    catch (e) { $("e").textContent = e.message; $("go").disabled = false; }
+  };
+  $("go").onclick = go; $("pin").onkeydown = e => { if (e.key === "Enter") go(); }; $("pin").focus();
+}
+
+async function showList() {
+  openPhone = ""; lastCount = -1; document.body.classList.remove("inchat"); { const b = $("back"); if (b) b.remove(); document.querySelector("main").style.padding = ""; } $("out").hidden = false; $("toDash").hidden = false; $("t").textContent = "WhatsApp inbox";
+  $("main").innerHTML = `<div class="empty">Loading…</div>`;
+  await refreshList(true); stop(); poll = setInterval(() => { if (!openPhone) refreshList(false).catch(() => {}); else refreshChat(false).catch(() => {}); }, 20000);
+}
+async function refreshList(first) {
+  let j; try { j = await api("/inbox/threads"); } catch (e) { if (first) $("main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  if (openPhone) return;
+  threads = j.threads; me = j.me || me; $("sub").textContent = me ? "Signed in as " + me : "";
+  const unread = threads.reduce((a, t) => a + t.unread, 0); document.title = (unread ? "(" + unread + ") " : "") + "WhatsApp inbox";
+  $("main").innerHTML = threads.length ? threads.map(t => `<button class="row" data-p="${esc(t.phone)}"><div class="av">${esc((label(t).replace(/[^A-Za-z0-9]/g, "")[0] || "#").toUpperCase())}</div><div class="mid"><b>${esc(label(t))}</b><span class="l">${t.lastDir === "out" ? "You: " : ""}${esc(t.last)}</span></div><div class="rt">${esc(ago(t.at))}${t.unread ? `<br><span class="n">${t.unread}</span>` : ""}</div></button>`).join("") : `<div class="empty"><b>No messages yet.</b><br>When a patient replies on WhatsApp, the message appears here and your phone gets an alert.</div>`;
+  $("main").querySelectorAll(".row").forEach(b => b.onclick = () => showChat(b.dataset.p));
+}
+
+async function showChat(phone) {
+  document.body.classList.add("inchat"); openPhone = phone; $("main").innerHTML = `<div class="empty">Loading…</div>`;
+  const t = threads.find(x => x.phone === phone);
+  $("t").textContent = t ? label(t) : "+" + phone;
+  $("main").innerHTML = `<div class="chat"><div class="msgs" id="msgs"></div><div class="compose" id="cmp"></div></div>`; document.querySelector("main").style.padding = "0";
+  const back = document.createElement("button"); back.className = "hbtn"; back.id = "back"; back.textContent = "‹ All chats";
+  $("out").before(back); back.onclick = () => { back.remove(); document.querySelector("main").style.padding = ""; showList(); };
+  await refreshChat(true);
+}
+async function refreshChat(first) {
+  let j; try { j = await api("/inbox/thread?p=" + encodeURIComponent(openPhone)); } catch (e) { toast(e.message); return; }
+  if (!$("msgs")) return;
+  $("t").textContent = j.name || "+" + j.phone; $("sub").textContent = "+" + j.phone;
+  const box = $("msgs"), atBottom = first || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  let lastDay = "", html = "";
+  for (const m of j.msgs) {
+    const d = new Date(m.at).toDateString(); if (d !== lastDay) { lastDay = d; html += `<div class="day">${esc(new Date(m.at).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }))}</div>`; }
+    html += `<div class="b ${m.d}">${esc(m.text)}<small>${esc(new Date(m.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }))}${m.d === "out" ? (m.st === "failed" ? " · not delivered" : m.st === "read" ? " · read" : m.st === "delivered" ? " · delivered" : " · sent") : ""}</small></div>`;
+  }
+  if (j.msgs.length !== lastCount) { box.innerHTML = html; lastCount = j.msgs.length; if (atBottom) box.scrollTop = box.scrollHeight; }
+  const c = $("cmp");
+  if (!j.open) { c.innerHTML = `<div class="closed">More than 24 hours have passed since this patient's last message, so WhatsApp does not allow a normal reply now. You can call the patient, or wait for the patient to write again.<br><a class="wa" target="_blank" rel="noopener" href="https://wa.me/${esc(j.phone)}">Open in your own WhatsApp</a></div>`; return; }
+  if (!c.querySelector("textarea")) {
+    c.innerHTML = `<div class="line"><textarea id="txt" rows="1" maxlength="1500" placeholder="Write your reply…"></textarea><button class="send" id="snd" aria-label="Send">➤</button></div><p class="note" style="margin-top:6px">Your name is added at the end of the message${me ? " (" + esc(me) + ")" : ""}.</p>`;
+    const ta = $("txt"); ta.oninput = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 140) + "px"; };
+    const send = async () => {
+      const text = ta.value.trim(); if (!text) return; $("snd").disabled = true;
+      try { await api("/inbox/reply", { method: "POST", body: JSON.stringify({ phone: openPhone, text }) }); ta.value = ""; ta.style.height = "auto"; await refreshChat(true); }
+      catch (e) { toast(e.message); }
+      $("snd").disabled = false;
+    };
+    $("snd").onclick = send; ta.onkeydown = e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); };
+  }
+}
+$("out").onclick = () => { document.body.classList.remove("inchat"); token = ""; store.set(""); stop(); const b = $("back"); if (b) b.remove(); document.querySelector("main").style.padding = ""; showLogin(); };
+if (token) showList().catch(() => showLogin()); else showLogin();
+})();
+</script>
+</body>
+</html>

@@ -62,4 +62,6 @@ id = "1b5c8608d48f479ab4ec2ad8afd9d4bc"
 #   several:     CAL_KEYS {"id":"key"}, DAILY_KEYS {"id":"key"}, PINS -> node make-secrets.mjs anish=<PIN> second=<PIN>
 #   always:      SESSION_SECRET, CAL_WEBHOOK_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_JWK
 #   WhatsApp:    WA_TOKEN (permanent token of the Meta "notifier" user)
+#   WhatsApp inbox (replies read in inbox.html, each doctor opens it with her own PIN): WA_VERIFY_TOKEN (node make-secrets.mjs ... --wa), WA_APP_SECRET (Meta app secret).
+#     In Meta: WhatsApp -> Configuration -> Webhook: callback URL <helper>/wa-webhook, verify token = WA_VERIFY_TOKEN, subscribe to "messages".
 #   own calendar: DATA_KEY (encrypts patient details; never change it once bookings exist)

@@ -41,6 +41,7 @@
 import { bookRoute, isBookPath } from "./book.js";
 import { isOwnPublic, isOwnDoctor, ownPublic, ownDoctor } from "./own.js";
 import { emailPatient, emailDoctor } from "./mail.js";
+import { inboxWebhook, inboxRoute, isInboxPath } from "./inbox.js";
 import { sendWhatsApp } from "./whatsapp.js";
 import { isVideoPath, videoRoute } from "./video.js";
 export { Room } from "./video.js";        // OWN VIDEO (Durable Object, one per consultation)
@@ -74,6 +75,7 @@ async function route(req, env, url, fromSite, ctx) {
   const M = req.method;
 
   if (p === "/health") return json({ ok: true });
+  if (p === "/wa-webhook") return inboxWebhook(req, env, url, n => waAlert(env, ctx));   // WhatsApp replies from patients (Meta)
   if (p === "/cal-webhook" && M === "POST") return calWebhook(req, env, url.searchParams.get("d") || "");
   if (p === "/vapid" && M === "GET") return json({ key: env.PLAN === "starter" ? "" : (env.VAPID_PUBLIC_KEY || "") });
   if (p === "/last-event" && M === "GET") return json((await env.PUSH.get("lastEvent", "json")) || {});
@@ -87,6 +89,7 @@ async function route(req, env, url, fromSite, ctx) {
   if (!own && isBookPath(p)) return bookRoute(req, url, p, async id => { const d = doctors(env).find(x => x.id === id) || (doctors(env).length === 1 ? doctors(env)[0] : null); return d && d.calKey ? { key: d.calKey, username: "" } : null; }, env.PUSH);
 
   const doc = await requireSession(req, env);
+  if (isInboxPath(p)) return inboxRoute(req, env, p, doc);   // WhatsApp inbox: every doctor opens it with her own PIN
   if (own && isOwnDoctor(p)) return ownDoctor(req, env, url, p, doc, hooks(env, ctx));
   if (p === "/bookings" && M === "GET") return bookings(env, doc);
   if (p === "/confirm" && M === "POST") {
@@ -124,6 +127,14 @@ function doctors(env) {
   return list.filter(d => d && /^[a-z0-9-]{1,40}$/i.test(d.id || "")).map(d => ({ id: d.id, name: d.name || "Doctor", roomUrl: d.roomUrl || "", calKey: cals[d.id], dailyKey: dailies[d.id], pinHash: pins[d.id], schedule: d.schedule, whatsapp: String(d.whatsapp || "").replace(/\D/g, ""), email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email || "") ? d.email : "" }));
 }
 const subsKey = d => d.id === "main" ? "subs" : "subs:" + d.id;
+/* a patient wrote on WhatsApp: every doctor's phone gets "New WhatsApp message" (no patient details) */
+async function waAlert(env, ctx) {
+  if (env.PLAN === "starter") return;
+  const k = "wamsg"; if (await env.PUSH.get(k)) return;   // at most one alert every 2 minutes
+  await env.PUSH.put(k, "1", { expirationTtl: 120 });
+  const p = (async () => { await env.PUSH.put("lastEvent", JSON.stringify({ type: "message", at: Date.now(), doctor: "" })); for (const d of doctors(env)) await pushAll(env, subsKey(d)); })();
+  if (ctx) ctx.waitUntil(p); else await p;
+}
 
 /* ---------- own video: who is the doctor, and "patient is waiting" alert ---------- */
 function videoOpts(env, ctx) {

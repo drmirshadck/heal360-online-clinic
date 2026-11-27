@@ -21,6 +21,8 @@ const hashPin = async p => hex(await c.subtle.digest("SHA-256", new TextEncoder(
 const out = {};
 if (multi) { const m = {}; for (const [id, p] of pairs) m[id] = await hashPin(p); out.PINS = JSON.stringify(m); }
 else out.PIN_HASH = await hashPin(pairs[0][1]);
+// WhatsApp inbox (inbox.html): Meta needs a verify token for the webhook:  node make-secrets.mjs ... --wa
+if (process.argv.includes("--wa")) out.WA_VERIFY_TOKEN = rand(18);
 Object.assign(out, {
 
   SESSION_SECRET: rand(32),

@@ -18,6 +18,7 @@ const TEXT = {
   created:     ["New booking", "A patient has booked a consultation."],
   cancelled:   ["Booking cancelled", "A patient cancelled a booking."],
   rescheduled: ["Booking rescheduled", "A patient changed their booking time."],
+  message:     ["New WhatsApp message", "A patient replied on WhatsApp. Open the inbox to read and answer."],
   waiting:     ["Patient is waiting", "Your patient is in the consultation room. Tap to join."]
 };
 async function helperUrl() {
@@ -36,7 +37,7 @@ self.addEventListener("push", e => {
     } catch (err) {}
     const [t0, body] = TEXT[kind];
     const title = who ? t0 + " · " + who : t0;
-    await self.registration.showNotification(title, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "booking", renotify: true, data: { url: "doctor.html" } });
+    await self.registration.showNotification(title, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "booking", renotify: true, data: { url: kind === "message" ? "inbox.html" : "doctor.html" } });
   })());
 });
 self.addEventListener("notificationclick", e => {
