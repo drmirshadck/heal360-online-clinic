@@ -41,6 +41,7 @@
 import { bookRoute, isBookPath } from "./book.js";
 import { isOwnPublic, isOwnDoctor, ownPublic, ownDoctor } from "./own.js";
 import { emailPatient, emailDoctor } from "./mail.js";
+import { sendWhatsApp } from "./whatsapp.js";
 import { isVideoPath, videoRoute } from "./video.js";
 export { Room } from "./video.js";        // OWN VIDEO (Durable Object, one per consultation)
 export { Calendar } from "./calendar.js";   // OWN CALENDAR (Durable Object, one per doctor)
@@ -155,13 +156,15 @@ function hooks(env, ctx) {
     await emailPatient(env, doc, b, kind, many).catch(log(kind));
     await emailDoctor(env, doc, b, dkind || kind, many).catch(log("doctor " + (dkind || kind)));
   };
+  // WhatsApp to the patient (only when WhatsApp is switched on; a failure never stops a booking)
+  const wa = (doc, b, kind) => sendWhatsApp(env, doc, b, kind).catch(log("whatsapp " + kind));
   return {
     bg: ctx ? p => ctx.waitUntil(p) : null,
     // phone alerts to the doctor never carry patient details; emails go only to that booking's patient
-    onNew: async (doc, b) => { await alert(doc, b.status === "pending" ? "request" : "created"); await mail(doc, b, b.status === "pending" ? "received" : "booked", b.status === "pending" ? "request" : "booked"); },
+    onNew: async (doc, b) => { await alert(doc, b.status === "pending" ? "request" : "created"); await mail(doc, b, b.status === "pending" ? "received" : "booked", b.status === "pending" ? "request" : "booked"); await wa(doc, b, b.status === "pending" ? "received" : "confirmed"); },
     onChange: async (doc, b, what) => {
-      if (what === "confirmed") return mail(doc, b, "confirmed");
-      if (what === "medicine") return mail(doc, b, "medicine");          // patient: pay button; doctor kind has no email
+      if (what === "confirmed") { await mail(doc, b, "confirmed"); return wa(doc, b, "confirmed"); }
+      if (what === "medicine") { await mail(doc, b, "medicine"); return wa(doc, b, "medicine"); }          // patient: pay button; doctor kind has no email
       if (what === "medicine ref") return mail(doc, b, "medref");        // doctor: patient says paid (patient kind has no email)
       if (what === "declined") return mail(doc, b, "declined");
       if (what === "cancelled by doctor") return mail(doc, b, "cancelledByDoctor");

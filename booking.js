@@ -209,7 +209,7 @@ function ownBooking(t) {
   $("#alt", box).onclick = e => { e.preventDefault(); if (CALU()) useEmbed(); else window.open(wa(`Hello, I would like to book a ${t.name}${DOCS.length > 1 ? " with " + DOC.name : ""}.`), "_blank"); };
 }
 function ownForm(t, paidLine) {
-  const f = st.form || (st.form = { name: "", email: "", phone: "+91 ", notes: "", extra: {} });
+  const f = st.form || (st.form = { name: "", email: "", phone: "+91 ", notes: "", extra: {}, lang: "en" });
   const info = st.info || {}; const phoneReq = !info.phone || info.phone.required;
   const fieldHtml = x => {
     const v = f.extra[x.slug] ?? "", id = "x_" + x.slug, lab = esc(x.label) + (x.required ? "" : " (optional)");
@@ -222,12 +222,13 @@ function ownForm(t, paidLine) {
     <label class="f">Full name<input id="bn" autocomplete="name" value="${esc(f.name)}"></label>
     <label class="f">Email (your confirmation and video link come here)<input id="be" type="email" autocomplete="email" value="${esc(f.email)}"></label>
     <label class="f">WhatsApp number${phoneReq ? "" : " (optional)"}<input id="bp" type="tel" autocomplete="tel" inputmode="tel" value="${esc(f.phone)}"></label>
+    <label class="f">WhatsApp message language<select id="bl"><option value="en"${f.lang === "ml" ? "" : " selected"}>English</option><option value="ml"${f.lang === "ml" ? " selected" : ""}>മലയാളം (Malayalam)</option></select></label>
     ${(info.fields || []).map(fieldHtml).join("")}
     <label class="f">Anything the doctor should know? (optional)<textarea id="bnotes" placeholder="Main complaint, how long, current medicines">${esc(f.notes)}</textarea></label>
     <p class="err" id="e"></p>
     <div class="sheet-actions"><button class="btn btn-ghost" id="back">Change time</button><button class="btn btn-solid" id="go">Confirm booking</button></div>`;
   const save = () => {
-    f.name = $("#bn", box).value.trim(); f.email = $("#be", box).value.trim(); f.phone = $("#bp", box).value.trim(); f.notes = $("#bnotes", box).value.trim();
+    f.name = $("#bn", box).value.trim(); f.email = $("#be", box).value.trim(); f.phone = $("#bp", box).value.trim(); f.lang = $("#bl", box) ? $("#bl", box).value : "en"; f.notes = $("#bnotes", box).value.trim();
     (info.fields || []).forEach(x => { const el = $("#x_" + x.slug, box); if (el) f.extra[x.slug] = el.type === "checkbox" ? el.checked : el.value.trim(); });
   };
   $("#back", box).onclick = () => { save(); st.sub = ""; render(); };
@@ -242,7 +243,7 @@ function ownForm(t, paidLine) {
     go.disabled = true; go.textContent = "Booking…"; e.textContent = "";
     try {
       const r = await fetch(HELP() + "/book/create", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ d: DOC.id, slug: t.calSlug, start: st.time, tz: TZ, name: f.name, email: f.email, phone: digits.length > 3 ? f.phone : "", notes: f.notes, extra: f.extra, utr: st.utr }) });
+        body: JSON.stringify({ d: DOC.id, slug: t.calSlug, start: st.time, tz: TZ, name: f.name, email: f.email, phone: digits.length > 3 ? f.phone : "", lang: f.lang === "ml" ? "ml" : "en", notes: f.notes, extra: f.extra, utr: st.utr }) });
       const d = await r.json().catch(() => ({}));
       if (r.status === 409) { st.msg = d.error || "That time was just taken. Please choose another."; st.sub = ""; st.slots = null; render(); return; }
       if (!r.ok || !d.uid) throw new Error(d.error || "The booking could not be saved. Please try again.");

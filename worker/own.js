@@ -40,7 +40,7 @@ export async function ownPublic(req, env, url, p, doctors, hooks = {}) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw bad(400, "Please enter a valid email address.");
     if (!phone) throw bad(400, "Please enter your WhatsApp number with country code.");
     if (isNaN(Date.parse(b.start))) throw bad(400, "Please choose a time again.");
-    const patient = { name, email, phone, notes: String(b.notes || "").trim().slice(0, 800), utr: String(b.utr || "").replace(/\D/g, "").slice(0, 12), tz: tzOk(b.tz) };
+    const patient = { name, email, phone, notes: String(b.notes || "").trim().slice(0, 800), utr: String(b.utr || "").replace(/\D/g, "").slice(0, 12), tz: tzOk(b.tz), lang: b.lang === "ml" ? "ml" : "en" };
     const r = await call(env, doc, { op: "create", slug: slug(b.slug), start: new Date(b.start).toISOString(), patient });
     const t = await manageToken(env, doc.id, r.uid);
     if (hooks.onNew) await later(hooks, () => hooks.onNew(doc, { ...r, ...patient, t, slug: slug(b.slug) }));

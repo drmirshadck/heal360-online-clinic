@@ -15,6 +15,7 @@
  *   noshow, window                            (Pro: mark a patient absent; bookings in a time window for WhatsApp reminders)
  */
 import { emailPatient, emailDoctor, manageToken } from "./mail.js";
+import { waOn, sendWhatsApp } from "./whatsapp.js";
 
 const DAY = 864e5;
 export const DEFAULT_SCHEDULE = {
@@ -39,7 +40,7 @@ export class Calendar {
       status TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL, enc TEXT NOT NULL)`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS bk_start ON bookings(start)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)`);
-    for (const col of ["r24", "r1", "absent", "med_amt", "med_at"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
+    for (const col of ["r24", "r1", "absent", "med_amt", "med_at", "w24", "w30"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
     // medicine payment (doctor adds the amount after the consultation; the patient pays the doctor's own UPI)
     for (const col of ["med_note", "med_st", "med_ref"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch (e) { /* already there */ } }
   }
@@ -57,14 +58,20 @@ export class Calendar {
   async alarm() {
     this.cleanup();
     try { await this.sendReminders(); } catch (e) { console.log("reminders failed", String(e && e.message || e)); }
+    try { await this.sendWaReminders(); } catch (e) { console.log("whatsapp reminders failed", String(e && e.message || e)); }
     await this.ensureAlarm(true);
   }
   /* next wake-up: the next reminder that falls due, or tomorrow (daily clean-up) */
   async ensureAlarm(force) {
     const now = Date.now();
     let next = now + DAY;
-    const rows = this.sql.exec(`SELECT start, r24, r1 FROM bookings WHERE status = 'confirmed' AND start > ? ORDER BY start LIMIT 200`, now).toArray();
+    const rows = this.sql.exec(`SELECT start, r24, r1, w24, w30 FROM bookings WHERE status = 'confirmed' AND start > ? ORDER BY start LIMIT 200`, now).toArray();
+    const wa = waOn(this.env);
     for (const b of rows) {
+      if (wa) {   // WhatsApp reminders: the day before and 30 minutes before
+        if (!b.w24 && b.start - DAY > now) next = Math.min(next, b.start - DAY);
+        if (!b.w30) next = Math.min(next, Math.max(now + 6e4, b.start - 30 * 6e4));
+      }
       if (!b.r24 && b.start - DAY > now) next = Math.min(next, b.start - DAY);
       if (!b.r1) next = Math.min(next, Math.max(now + 6e4, b.start - 3600e3));
     }
@@ -89,6 +96,24 @@ export class Calendar {
       const doc = { id: meta.id, name: meta.name, email: meta.email || "" };
       await emailPatient(this.env, doc, { ...v, t }, kind, meta.many).catch(e => console.log("reminder email failed", String(e && e.message || e)));
       await emailDoctor(this.env, doc, v, kind, meta.many).catch(e => console.log("doctor reminder email failed", String(e && e.message || e)));
+    }
+  }
+  /* WhatsApp reminders to the patient: ~24 hours and 30 minutes before (only for confirmed bookings, only when WhatsApp is on) */
+  async sendWaReminders() {
+    if (!waOn(this.env)) return;
+    const meta = this.meta(); if (!meta.id) return;
+    const now = Date.now();
+    const rows = this.sql.exec(`SELECT * FROM bookings WHERE status = 'confirmed' AND start > ? AND start < ? AND (w24 = 0 OR w30 = 0)`, now + 2 * 6e4, now + DAY + 10 * 6e4).toArray();
+    for (const r of rows) {
+      const left = r.start - now;
+      let kind = "";
+      if (!r.w30 && left <= 32 * 6e4) kind = "reminder30";
+      else if (!r.w24 && left <= DAY + 2 * 6e4 && left > 3 * 3600e3) kind = "reminder24";
+      if (!kind) continue;
+      this.sql.exec(kind === "reminder30" ? `UPDATE bookings SET w30 = 1, w24 = 1 WHERE id = ?` : `UPDATE bookings SET w24 = 1 WHERE id = ?`, r.id);   // mark first: never twice
+      const v = await this.view(r);
+      const t = await manageToken(this.env, meta.id, r.id);
+      await sendWhatsApp(this.env, { id: meta.id, name: meta.name }, { ...v, t }, kind).catch(e => console.log("whatsapp reminder failed", String(e && e.message || e)));
     }
   }
   meta() { const row = this.sql.exec(`SELECT v FROM kv WHERE k = 'who'`).toArray()[0]; try { return row ? JSON.parse(row.v) : {}; } catch (e) { return {}; } }
@@ -182,9 +207,9 @@ export class Calendar {
         const id = newId();
         const status = t.confirm ? "pending" : "confirmed";
         const p = a.patient || {};
-        const enc = await this.seal({ name: p.name, email: p.email, phone: p.phone, notes: p.notes, utr: p.utr, tz: p.tz });
-        this.sql.exec(`INSERT INTO bookings (id, start, "end", slug, title, status, created, updated, enc, r24, r1) VALUES (?,?,?,?,?,?,?,?,?,?,0)`,
-          id, start, start + t.length * 6e4, a.slug, t.name, status, Date.now(), Date.now(), enc, start - Date.now() < 26 * 3600e3 ? 1 : 0);
+        const enc = await this.seal({ name: p.name, email: p.email, phone: p.phone, notes: p.notes, utr: p.utr, tz: p.tz, lang: p.lang === "ml" ? "ml" : "en" });
+        this.sql.exec(`INSERT INTO bookings (id, start, "end", slug, title, status, created, updated, enc, r24, r1, w24) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)`,
+          id, start, start + t.length * 6e4, a.slug, t.name, status, Date.now(), Date.now(), enc, start - Date.now() < 26 * 3600e3 ? 1 : 0, start - Date.now() < 26 * 3600e3 ? 1 : 0);
         return { uid: id, status, start: new Date(start).toISOString(), end: new Date(start + t.length * 6e4).toISOString(), title: t.name };
       }
       case "get": {
@@ -211,7 +236,7 @@ export class Calendar {
         const t = this.typeOf(s, b.slug) || { length: Math.round((b.end - b.start) / 6e4), confirm: true };
         const start = Date.parse(a.start);
         if (!this.freeSlots(s, t, start - 1, start + 1, b.id).includes(start)) throw bad(409, "Sorry, that time was just taken. Please choose another time.");
-        this.sql.exec(`UPDATE bookings SET start = ?, "end" = ?, updated = ?, r24 = ?, r1 = 0 WHERE id = ?`, start, start + t.length * 6e4, Date.now(), start - Date.now() < 26 * 3600e3 ? 1 : 0, b.id);
+        this.sql.exec(`UPDATE bookings SET start = ?, "end" = ?, updated = ?, r24 = ?, r1 = 0, w24 = ?, w30 = 0 WHERE id = ?`, start, start + t.length * 6e4, Date.now(), start - Date.now() < 26 * 3600e3 ? 1 : 0, start - Date.now() < 26 * 3600e3 ? 1 : 0, b.id);
         return { ok: true, ...(await this.view({ ...b, start, end: start + t.length * 6e4 })) };
       }
       case "list": {
@@ -289,7 +314,7 @@ export class Calendar {
   async view(b) {
     const p = await this.open(b.enc);
     return { uid: b.id, status: b.status, title: b.title || b.slug, slug: b.slug, start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString(),
-      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", absent: !!b.absent, created: new Date(b.created).toISOString(),
+      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", lang: p.lang === "ml" ? "ml" : "en", absent: !!b.absent, created: new Date(b.created).toISOString(),
       med: b.med_amt > 0 ? { amount: b.med_amt, note: b.med_note || "", status: b.med_st || "due", ref: b.med_ref || "", at: new Date(b.med_at || b.updated).toISOString() } : null };
   }
 

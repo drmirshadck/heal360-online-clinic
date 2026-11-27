@@ -14,6 +14,9 @@ TIMEZONE = "Asia/Kolkata"
 CLINIC_NAME = "Heal 360 Online Clinic"
 SITE_URL = "https://drmirshadck.github.io/heal360-online-clinic/"
 CLINIC_WHATSAPP = "917511136045"
+# WhatsApp messages to patients (confirmation, reminders, medicine payment): OFF until the clinic number is Connected and templates are approved (whatsapp-templates.md)
+WA_ENABLED = "false"
+WA_PHONE_ID = ""             # phone-number id from Meta WhatsApp Manager
 EMAIL_PROVIDER = "zeptomail"
 EMAIL_FROM = "yourbooking@arshees.com"
 ZEPTO_HOST = "cpaas.zoho.com"
@@ -56,4 +59,5 @@ id = "1b5c8608d48f479ab4ec2ad8afd9d4bc"
 #   one doctor:  CAL_API_KEY, DAILY_API_KEY, PIN_HASH          -> node make-secrets.mjs <PIN>
 #   several:     CAL_KEYS {"id":"key"}, DAILY_KEYS {"id":"key"}, PINS -> node make-secrets.mjs anish=<PIN> second=<PIN>
 #   always:      SESSION_SECRET, CAL_WEBHOOK_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_JWK
+#   WhatsApp:    WA_TOKEN (permanent token of the Meta "notifier" user)
 #   own calendar: DATA_KEY (encrypts patient details; never change it once bookings exist)
