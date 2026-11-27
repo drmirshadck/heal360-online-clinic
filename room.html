@@ -105,6 +105,8 @@
   .badge small{display:block;font-size:.76rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mark{position:absolute;right:14px;top:14px;z-index:4;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .8rem var(--display);max-width:40%}
   .mark span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .norec{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;z-index:3;pointer-events:none;max-width:44%;text-align:center;color:#fff;opacity:.62;font:600 .72rem/1.3 var(--display);text-shadow:0 1px 5px #000b}
+  @media (max-width:640px){.norec{bottom:auto;top:62px;max-width:calc(100% - 28px);font-size:.66rem}}
   .private{position:absolute;left:14px;bottom:14px;z-index:4;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .72rem var(--display)}
   .private svg{width:13px;height:13px}
   .net{position:absolute;top:0;left:0;right:0;z-index:6;background:#e8a33d;color:#1d1d1d;text-align:center;font:700 .85rem var(--display);padding:7px}
@@ -194,6 +196,7 @@
         <video id="local" autoplay playsinline muted></video>
         <div class="badge"><b id="who">Consultation</b><small id="sub"></small></div>
         <div class="mark" id="mark"></div>
+        <div class="norec">Recording, screenshots or sharing of this consultation is not allowed.</div>
         <span class="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private · not recorded</span>
         <div class="net hide" id="net">Connection lost. Reconnecting…</div>
         <div class="over" id="center"><div><div class="pulse"></div><h1>Connecting…</h1><p></p></div></div>
