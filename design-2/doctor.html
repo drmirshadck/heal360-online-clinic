@@ -92,6 +92,10 @@
   <label class="note" style="display:block;margin-top:6px">What it is for (optional)<input type="text" id="mNote" maxlength="100" placeholder="e.g. Medicines for 1 month + courier"></label>
   <p class="note" style="margin-top:8px" id="mHow"></p><p class="err" id="mErr"></p>
   <div class="acts"><button class="btn ghost" id="mNo">Cancel</button><button class="btn" id="mYes">Save &amp; send</button></div></dialog>
+<dialog id="fdlg"><h3>Follow-up date</h3><p class="note" id="fSub"></p>
+  <label class="note" style="display:block;margin-top:10px">When should the patient come for follow-up?<input type="date" id="fDate" style="width:100%;font:inherit;font-size:16px;border:1.5px solid var(--line);border-radius:12px;padding:11px;margin-top:6px"></label>
+  <p class="note" style="margin-top:8px">The patient gets a WhatsApp message <b>3 days before this date</b>, saying their medicines are ending and asking them to book. If you don't add a date, no message is sent.</p><p class="err" id="fErr"></p>
+  <div class="acts"><button class="btn ghost" id="fNo">Cancel</button><button class="btn no" id="fClr" hidden>Remove date</button><button class="btn" id="fYes">Save</button></div></dialog>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -184,6 +188,7 @@ function render() {
   document.querySelectorAll("[data-madd]").forEach(b => b.onclick = () => medDialog(b.dataset.madd));
   document.querySelectorAll("[data-mpaid]").forEach(b => b.onclick = () => medPaid(b));
   document.querySelectorAll("[data-mclr]").forEach(b => b.onclick = () => medClear(b));
+  document.querySelectorAll("[data-fu]").forEach(b => b.onclick = () => fuDialog(b.dataset.fu));
   if ($("nb")) $("nb").onclick = enablePush;
   if (tab === "timetable") loadTT();
 }
@@ -261,7 +266,7 @@ function medTab() {
   const rank = b => !b.med ? 1 : b.med.status === "due" ? 0 : 2;
   const items = medItems().sort((a, b) => rank(a) - rank(b) || Date.parse(b.start) - Date.parse(a.start));
   const hasUpi = !!((DOCS && me && (DOCS.find(d => d.id === me.id) || {}).upiId) || (S.payment && S.payment.upiId));
-  return `<p class="note" style="margin-bottom:10px">After a consultation, add the medicine amount. The patient gets a <b>Pay</b> button that opens their UPI app and pays <b>your own UPI</b>. Unpaid ones stay at the top.</p>
+  return `<p class="note" style="margin-bottom:10px">After a consultation, add the medicine amount. The patient gets a <b>Pay</b> button that opens their UPI app and pays <b>your own UPI</b>. Unpaid ones stay at the top. You can also add a <b>follow-up date</b>: the patient then gets a WhatsApp reminder that their medicines are ending.</p>
     ${hasUpi ? "" : `<div class="notify">Your UPI ID is not set on the website yet, so patients can't pay online. Tell DotCom by Arshees to add it.</div>`}
     ${items.length ? items.map(medCard).join("") : `<div class="empty">No consultations yet. Once you've seen a patient, they appear here.</div>`}`;
 }
@@ -272,7 +277,9 @@ function medCard(b) {
   const msgNew = `Hello ${b.name}, your medicine payment of ₹${m ? m.amount : ""}${m && m.note ? " (" + m.note + ")" : ""} from ${D.name} is ready. Please pay here with your UPI app: ${link}`;
   const msgRem = `Hello ${b.name}, a gentle reminder about your medicine payment of ₹${m ? m.amount : ""} to ${D.name}. You can pay here with your UPI app: ${link}`;
   const head = `<div class="top"><div><h3>${esc(b.name)}</h3><div class="meta"><span>${esc(typeName(b.title))} · ${esc(day(b.start))}, ${esc(time(b.start))}</span></div></div></div>`;
-  if (!m) return `<div class="card">${head}<div class="acts"><button class="btn" data-madd="${esc(b.uid)}">Add medicine amount</button></div></div>`;
+  const fu = b.fu ? `<div class="med"><span>Follow-up: <b>${esc(fuFmt(b.fu.date))}</b> · ${b.fu.sent ? "WhatsApp reminder sent ✓" : "WhatsApp goes 3 days before"}</span></div>` : "";
+  const fuBtn = `<button class="btn ghost" data-fu="${esc(b.uid)}">${b.fu ? "Change follow-up date" : "Add follow-up date"}</button>`;
+  if (!m) return `<div class="card">${head}${fu}<div class="acts"><button class="btn" data-madd="${esc(b.uid)}">Add medicine amount</button>${fuBtn}</div></div>`;
   const paid = m.status === "paid";
   return `<div class="card">${head}
     <div class="med ${paid ? "paid" : "due"}"><span><b>₹${esc(m.amount)}</b> <span class="tag ${paid ? "paid" : "due"}">${paid ? "Paid ✓" : "Not paid yet"}</span></span>
@@ -280,6 +287,7 @@ function medCard(b) {
       ${!paid && m.ref ? `<span>Patient says paid · <span class="upi">Ref ${esc(m.ref)}</span> — check your UPI app, then tap Mark paid.</span>` : ""}</div>
     ${paid ? "" : `<div class="acts">${ph ? `<a class="btn wa" href="${wa(m.ref ? msgNew : msgRem)}" target="_blank" rel="noopener">${m.ref ? "Send link again" : "Send link / reminder"}</a>` : ""}<button class="btn ok" data-mpaid="${esc(b.uid)}">Mark paid</button></div>
     <div class="acts"><button class="btn ghost" data-madd="${esc(b.uid)}">Change amount</button><button class="btn no" data-mclr="${esc(b.uid)}">Remove</button></div>`}
+    ${fu}<div class="acts">${fuBtn}</div>
   </div>`;
 }
 function medDialog(uid) {
@@ -301,6 +309,24 @@ function medDialog(uid) {
     } catch (e) { $("mErr").textContent = e.message; }
     $("mYes").disabled = false;
   };
+}
+const fuFmt = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-IN", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric" });
+function fuDialog(uid) {
+  const b = medItems().find(x => x.uid === uid); if (!b) return;
+  const dlg = $("fdlg");
+  $("fSub").textContent = `${b.name} · ${day(b.start)}`; $("fErr").textContent = "";
+  $("fDate").min = new Date().toLocaleDateString("en-CA", { timeZone: TZ }); $("fDate").value = b.fu ? b.fu.date : "";
+  $("fClr").hidden = !b.fu;
+  dlg.showModal();
+  const save = async date => {
+    $("fYes").disabled = $("fClr").disabled = true;
+    try { await api("/follow", { method: "POST", body: JSON.stringify({ uid, date }) }); dlg.close(); toast(date ? "Follow-up date saved. The patient gets a WhatsApp 3 days before." : "Follow-up date removed. No message will be sent."); tab = "medicine"; await load(); }
+    catch (e) { $("fErr").textContent = e.message; }
+    $("fYes").disabled = $("fClr").disabled = false;
+  };
+  $("fNo").onclick = () => dlg.close();
+  $("fClr").onclick = () => save("");
+  $("fYes").onclick = () => { if (!$("fDate").value) { $("fErr").textContent = "Choose a date, or tap Cancel."; return; } save($("fDate").value); };
 }
 async function medPaid(btn) {
   if (!confirm("Mark this as paid? Only do this after you see the money in your UPI app.")) return;

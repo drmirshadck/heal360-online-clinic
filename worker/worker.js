@@ -121,7 +121,7 @@ function doctors(env) {
     return [{ id: "main", name: env.DOCTOR_NAME || "Doctor", roomUrl: env.DAILY_ROOM_URL || "", calKey: env.CAL_API_KEY, dailyKey: env.DAILY_API_KEY, pinHash: env.PIN_HASH, email: env.DOCTOR_EMAIL || "" }];
   }
   const pins = jmap(env, "PINS"), cals = jmap(env, "CAL_KEYS"), dailies = jmap(env, "DAILY_KEYS");
-  return list.filter(d => d && /^[a-z0-9-]{1,40}$/i.test(d.id || "")).map(d => ({ id: d.id, name: d.name || "Doctor", roomUrl: d.roomUrl || "", calKey: cals[d.id], dailyKey: dailies[d.id], pinHash: pins[d.id], schedule: d.schedule, email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email || "") ? d.email : "" }));
+  return list.filter(d => d && /^[a-z0-9-]{1,40}$/i.test(d.id || "")).map(d => ({ id: d.id, name: d.name || "Doctor", roomUrl: d.roomUrl || "", calKey: cals[d.id], dailyKey: dailies[d.id], pinHash: pins[d.id], schedule: d.schedule, whatsapp: String(d.whatsapp || "").replace(/\D/g, ""), email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email || "") ? d.email : "" }));
 }
 const subsKey = d => d.id === "main" ? "subs" : "subs:" + d.id;
 
@@ -161,15 +161,15 @@ function hooks(env, ctx) {
   return {
     bg: ctx ? p => ctx.waitUntil(p) : null,
     // phone alerts to the doctor never carry patient details; emails go only to that booking's patient
-    onNew: async (doc, b) => { await alert(doc, b.status === "pending" ? "request" : "created"); await mail(doc, b, b.status === "pending" ? "received" : "booked", b.status === "pending" ? "request" : "booked"); await wa(doc, b, b.status === "pending" ? "received" : "confirmed"); },
+    onNew: async (doc, b) => { await alert(doc, b.status === "pending" ? "request" : "created"); await mail(doc, b, b.status === "pending" ? "received" : "booked", b.status === "pending" ? "request" : "booked"); await wa(doc, b, b.status === "pending" ? "received" : "confirmed"); if (b.status === "pending") await wa(doc, b, "d_request"); },
     onChange: async (doc, b, what) => {
       if (what === "confirmed") { await mail(doc, b, "confirmed"); return wa(doc, b, "confirmed"); }
       if (what === "medicine") { await mail(doc, b, "medicine"); return wa(doc, b, "medicine"); }          // patient: pay button; doctor kind has no email
-      if (what === "medicine ref") return mail(doc, b, "medref");        // doctor: patient says paid (patient kind has no email)
-      if (what === "declined") return mail(doc, b, "declined");
-      if (what === "cancelled by doctor") return mail(doc, b, "cancelledByDoctor");
-      if (what === "cancelled by patient") { await alert(doc, "cancelled"); return mail(doc, b, "cancelledByPatient"); }
-      if (what === "time changed by patient") { await alert(doc, "rescheduled"); return mail(doc, b, "rescheduled"); }
+      if (what === "medicine ref") { await mail(doc, b, "medref"); return wa(doc, b, "d_medpaid"); }        // doctor: patient says paid (patient kind has no email)
+      if (what === "declined") { await mail(doc, b, "declined"); return wa(doc, b, "cancelled"); }
+      if (what === "cancelled by doctor") { await mail(doc, b, "cancelledByDoctor"); return wa(doc, b, "cancelled"); }
+      if (what === "cancelled by patient") { await alert(doc, "cancelled"); await mail(doc, b, "cancelledByPatient"); return wa(doc, b, "d_cancelled"); }
+      if (what === "time changed by patient") { await alert(doc, "rescheduled"); await mail(doc, b, "rescheduled"); return wa(doc, b, "d_rescheduled"); }
     }
   };
 }

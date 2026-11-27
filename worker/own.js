@@ -5,6 +5,7 @@
  * Patient's manage link:     GET /book/manage, POST /book/cancel, POST /book/reschedule   (signed link, no login)
  * Doctor dashboard (PIN):    GET /bookings, POST /confirm, POST /decline, POST /cancel-booking,
  *                            GET /schedule, POST /schedule, GET /export?month=YYYY-MM (CSV)
+ *                            POST /follow (follow-up date)
  *                            POST /med (amount + note), POST /med-paid, POST /med-clear   (medicine payment)
  * Patient pays the doctor's own UPI from manage.html; POST /book/med-ref = "I have paid" + 12-digit reference.
  */
@@ -13,7 +14,7 @@ import { manageToken } from "./mail.js";
 export { manageToken };
 
 const BOOK = ["/book/info", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule", "/book/med-ref"];
-const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear"];
+const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear", "/follow"];
 export const isOwnPublic = p => BOOK.includes(p);
 export const isOwnDoctor = p => DOCTOR.includes(p);
 
@@ -89,6 +90,7 @@ export async function ownDoctor(req, env, url, p, doc, hooks = {}) {
     if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: await manageToken(env, doc.id, v.uid) }, "medicine"));
     return ok({ ok: true, med: v.med });
   }
+  if (p === "/follow" && M === "POST") { const { uid, date } = await body(req); const v = await call(env, doc, { op: "setFollow", id: uid, date }); return ok({ ok: true, fu: v.fu }); }
   if (p === "/med-paid" && M === "POST") { const { uid } = await body(req); const v = await call(env, doc, { op: "medPaid", id: uid }); return ok({ ok: true, med: v.med }); }
   if (p === "/med-clear" && M === "POST") { const { uid } = await body(req); await call(env, doc, { op: "medClear", id: uid }); return ok({ ok: true }); }
   if (p === "/schedule" && M === "GET") return ok(await call(env, doc, { op: "schedule" }));
@@ -115,7 +117,7 @@ function pick(doctors, id) {
 export async function call(env, doc, msg) {
   if (!env.CALS) throw bad(500, "The calendar is not set up yet.");
   const stub = env.CALS.get(env.CALS.idFromName(doc.id));
-  const r = await stub.fetch("https://calendar/", { method: "POST", body: JSON.stringify({ ...msg, defaults: defaultsFor(env, doc), who: { id: doc.id, name: doc.name, email: doc.email || "", many: (() => { try { return JSON.parse(env.DOCTORS_JSON || "[]").length > 1; } catch (e) { return false; } })() } }) });
+  const r = await stub.fetch("https://calendar/", { method: "POST", body: JSON.stringify({ ...msg, defaults: defaultsFor(env, doc), who: { id: doc.id, name: doc.name, email: doc.email || "", whatsapp: doc.whatsapp || "", many: (() => { try { return JSON.parse(env.DOCTORS_JSON || "[]").length > 1; } catch (e) { return false; } })() } }) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw bad(r.status, d.error || "Something went wrong. Please try again.");
   return d;

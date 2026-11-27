@@ -11,6 +11,7 @@
  *   get, cancel, reschedule                   (patient's own manage link, token checked by the worker)
  *   list, confirm, decline, dcancel, export   (doctor dashboard, after PIN login)
  *   schedule, setSchedule                     (doctor dashboard: timetable + leave)
+ *   setFollow                                 (follow-up date for the WhatsApp "medicines ending" message)
  *   setMed, medRef, medPaid, medClear         (medicine payment after the consultation)
  *   noshow, window                            (Pro: mark a patient absent; bookings in a time window for WhatsApp reminders)
  */
@@ -40,9 +41,9 @@ export class Calendar {
       status TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL, enc TEXT NOT NULL)`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS bk_start ON bookings(start)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)`);
-    for (const col of ["r24", "r1", "absent", "med_amt", "med_at", "w24", "w30"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
+    for (const col of ["r24", "r1", "absent", "med_amt", "med_at", "w24", "w30", "fu_sent"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
     // medicine payment (doctor adds the amount after the consultation; the patient pays the doctor's own UPI)
-    for (const col of ["med_note", "med_st", "med_ref"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch (e) { /* already there */ } }
+    for (const col of ["med_note", "med_st", "med_ref", "fu_date"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch (e) { /* already there */ } }
   }
 
   async fetch(req) {
@@ -58,6 +59,7 @@ export class Calendar {
   async alarm() {
     this.cleanup();
     try { await this.sendReminders(); } catch (e) { console.log("reminders failed", String(e && e.message || e)); }
+    try { await this.sendFollowUps(); } catch (e) { console.log("follow-up failed", String(e && e.message || e)); }
     try { await this.sendWaReminders(); } catch (e) { console.log("whatsapp reminders failed", String(e && e.message || e)); }
     await this.ensureAlarm(true);
   }
@@ -75,6 +77,7 @@ export class Calendar {
       if (!b.r24 && b.start - DAY > now) next = Math.min(next, b.start - DAY);
       if (!b.r1) next = Math.min(next, Math.max(now + 6e4, b.start - 3600e3));
     }
+    if (wa) for (const f of this.sql.exec(`SELECT fu_date FROM bookings WHERE fu_date != '' AND fu_sent = 0 AND status = 'confirmed' LIMIT 200`).toArray()) next = Math.min(next, Math.max(now + 6e4, this.followAt(f.fu_date)));
     const cur = await this.ctx.storage.getAlarm();
     if (force || !cur || cur > next || cur < now - 6e4) await this.ctx.storage.setAlarm(next);
   }
@@ -98,6 +101,21 @@ export class Calendar {
       await emailDoctor(this.env, doc, v, kind, meta.many).catch(e => console.log("doctor reminder email failed", String(e && e.message || e)));
     }
   }
+  /* follow-up ("your medicines are ending"): 3 days before the date the doctor set, at 10:00 clinic time; nothing is sent unless a date was added */
+  followAt(date) { return zoned(addDays(date, -3), "10:00", this.env.TIMEZONE || "Asia/Kolkata"); }
+  async sendFollowUps() {
+    if (!waOn(this.env)) return;
+    const meta = this.meta(); if (!meta.id) return;
+    const now = Date.now(), tz = this.env.TIMEZONE || "Asia/Kolkata", today = localDate(now, tz);
+    const rows = this.sql.exec(`SELECT * FROM bookings WHERE fu_date != '' AND fu_sent = 0 AND status = 'confirmed' LIMIT 100`).toArray();
+    for (const r of rows) {
+      if (this.followAt(r.fu_date) > now) continue;
+      this.sql.exec(`UPDATE bookings SET fu_sent = 1 WHERE id = ?`, r.id);          // mark first: never twice
+      if (r.fu_date < today) continue;                                              // date already passed: no message
+      const v = await this.view(r);
+      await sendWhatsApp(this.env, { id: meta.id, name: meta.name }, v, "followup").catch(e => console.log("follow-up message failed", String(e && e.message || e)));
+    }
+  }
   /* WhatsApp reminders to the patient: ~24 hours and 30 minutes before (only for confirmed bookings, only when WhatsApp is on) */
   async sendWaReminders() {
     if (!waOn(this.env)) return;
@@ -113,7 +131,9 @@ export class Calendar {
       this.sql.exec(kind === "reminder30" ? `UPDATE bookings SET w30 = 1, w24 = 1 WHERE id = ?` : `UPDATE bookings SET w24 = 1 WHERE id = ?`, r.id);   // mark first: never twice
       const v = await this.view(r);
       const t = await manageToken(this.env, meta.id, r.id);
-      await sendWhatsApp(this.env, { id: meta.id, name: meta.name }, { ...v, t }, kind).catch(e => console.log("whatsapp reminder failed", String(e && e.message || e)));
+      const d = { id: meta.id, name: meta.name, whatsapp: meta.whatsapp || "" };
+      await sendWhatsApp(this.env, d, { ...v, t }, kind).catch(e => console.log("whatsapp reminder failed", String(e && e.message || e)));
+      await sendWhatsApp(this.env, d, { ...v, t }, "d_" + kind).catch(e => console.log("whatsapp doctor reminder failed", String(e && e.message || e)));
     }
   }
   meta() { const row = this.sql.exec(`SELECT v FROM kv WHERE k = 'who'`).toArray()[0]; try { return row ? JSON.parse(row.v) : {}; } catch (e) { return {}; } }
@@ -177,7 +197,7 @@ export class Calendar {
 
   /* ---------- ops ---------- */
   async op(a) {
-    if (a.who && a.who.id) this.sql.exec(`INSERT INTO kv (k, v) VALUES ('who', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`, JSON.stringify({ id: a.who.id, name: a.who.name, email: a.who.email || "", many: !!a.who.many }));
+    if (a.who && a.who.id) this.sql.exec(`INSERT INTO kv (k, v) VALUES ('who', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`, JSON.stringify({ id: a.who.id, name: a.who.name, email: a.who.email || "", whatsapp: a.who.whatsapp || "", many: !!a.who.many }));
     try { return await this.op2(a); } finally { await this.ensureAlarm(); }
   }
   async op2(a) {
@@ -257,6 +277,19 @@ export class Calendar {
         this.sql.exec(`UPDATE bookings SET med_amt = ?, med_note = ?, med_st = 'due', med_ref = '', med_at = ?, updated = ? WHERE id = ?`, amt, note, Date.now(), Date.now(), b.id);
         return { ok: true, ...(await this.view(this.row(b.id))) };
       }
+      case "setFollow": {       // doctor sets (or clears) the follow-up date; the WhatsApp "medicines are ending" message goes only if a date is set
+        const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
+        if (b.status !== "confirmed") throw bad(409, "A follow-up date can be added only for a confirmed consultation.");
+        const d = String(a.date || "");
+        if (d) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(Date.parse(d + "T12:00:00Z"))) throw bad(400, "Choose a valid date.");
+          const today = localDate(Date.now(), s.tz);
+          if (d < today) throw bad(400, "The follow-up date can't be in the past.");
+          if (d > addDays(today, 400)) throw bad(400, "Choose a date within the next year.");
+        }
+        this.sql.exec(`UPDATE bookings SET fu_date = ?, fu_sent = 0, updated = ? WHERE id = ?`, d, Date.now(), b.id);
+        return { ok: true, ...(await this.view(this.row(b.id))) };
+      }
       case "medRef": {          // patient says they paid and gives the 12-digit UPI reference (the doctor still checks and marks paid)
         const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
         if (b.med_st !== "due") throw bad(409, "There is no medicine payment waiting for this booking.");
@@ -315,6 +348,7 @@ export class Calendar {
     const p = await this.open(b.enc);
     return { uid: b.id, status: b.status, title: b.title || b.slug, slug: b.slug, start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString(),
       name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", lang: p.lang === "ml" ? "ml" : "en", absent: !!b.absent, created: new Date(b.created).toISOString(),
+      fu: b.fu_date ? { date: b.fu_date, sent: !!b.fu_sent } : null,
       med: b.med_amt > 0 ? { amount: b.med_amt, note: b.med_note || "", status: b.med_st || "due", ref: b.med_ref || "", at: new Date(b.med_at || b.updated).toISOString() } : null };
   }
 
