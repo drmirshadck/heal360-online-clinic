@@ -278,7 +278,7 @@ function msg(title, text, btns, kind) {
   const top = kind === "wait" ? '<div class="pulse"></div>' : `<div class="icon">${ICON[kind || "info"] || ICON.info}</div>`;
   $("msg").innerHTML = `<div class="inner">${top}<h1>${esc(title)}</h1><p>${text || ""}</p>${btns ? `<div class="btns">${btns}</div>` : ""}</div>`;
 }
-function over(title, text, extra) { $("center").classList.remove("hide"); $("center").innerHTML = `<div><div class="pulse"></div><h1>${esc(title)}</h1><p>${text || ""}</p>${extra || ""}</div>`; const b = $("tryBackup"); if (b) b.onclick = () => startBackup(false); }
+function over(title, text, extra) { $("center").classList.remove("hide"); $("center").innerHTML = `<div><div class="pulse"></div><h1>${esc(title)}</h1><p>${text || ""}</p>${extra || ""}</div>`; const b = $("tryBackup"); if (b) b.onclick = () => J.dailyOnly ? switchToOwn(false) : startBackup(false); }
 const hideOver = () => $("center").classList.add("hide");
 const when = iso => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
@@ -404,7 +404,7 @@ async function enter() {
   $("sub").textContent = J.role === "patient" ? (DOC.qual || J.title || "") : (J.title || "Patient");
   $("local").srcObject = local; paintMedia();
   $("backup").classList.toggle("hide", !J.backup);
-  if (J.dailyOnly) { waiting(); startBackup(true); return; }   // this clinic uses one video service only: go straight in
+  if (J.dailyOnly) { waiting(); connect(); startBackup(true); return; }   // this clinic uses one video service only: go straight in
   waiting();
   connect();
 }
@@ -417,7 +417,7 @@ function waiting() {
   $("dot").classList.remove("on"); $("state").textContent = mode === "daily" ? (J.dailyOnly ? "Waiting" : "Backup video") : "Waiting";
   // still not connected after 45 seconds: offer the backup video
   clearTimeout(backupOffer);
-  if (J.backup && mode === "own") backupOffer = setTimeout(() => {
+  if (J.backup && !J.dailyOnly && mode === "own") backupOffer = setTimeout(() => {
     if (mode !== "own" || (pc && pc.connectionState === "connected")) return;
     over("Video not connecting?", J.role === "doctor" ? "If your patient is here but you can't see each other, switch to the backup video." : "If the doctor is here but you can't see each other, switch to the backup video. You'll both move over together.",
       `<button class="btn" id="tryBackup">Try backup video</button>`);
@@ -465,8 +465,11 @@ function newPC() {
 }
 
 async function onMsg(m) {
-  if (mode === "daily") { if (m.type === "peer-joined") send({ type: "backup" }); return; }   // the other side reloaded: bring them to the backup too
-  if (m.type === "backup") { startBackup(true); return; }
+  if (mode === "daily") {
+    if (J.dailyOnly) { if (m.type === "backup") switchToOwn(true); return; }   // either side tapped Backup video: both move to our own direct room
+    if (m.type === "peer-joined") send({ type: "backup" }); return;
+  }   // the other side reloaded: bring them to the backup too
+  if (m.type === "backup") { if (!J.dailyOnly) startBackup(true); return; }
   if (m.type === "welcome") { if (m.peers && m.peers.length) newPC(); return; }
   if (m.type === "peer-joined") { newPC(); return; }
   if (m.type === "peer-left" || m.type === "bye") { if (pc) { try { pc.close(); } catch (e) {} pc = null; } $("remote").srcObject = null; waiting(); return; }
@@ -500,7 +503,7 @@ async function startBackup(fromOther) {
   mode = "daily"; clearTimeout(backupOffer);
   if (!fromOther) send({ type: "backup" });                 // the other side moves over with us
   if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-  $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = "Backup video"; $("backup").classList.add("hide");
+  $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = J.dailyOnly ? "Joining" : "Backup video"; if (!J.dailyOnly) $("backup").classList.add("hide");
   over(J.dailyOnly ? "Joining…" : "Switching to backup video…", "This takes a few seconds. Please stay on this page.");
   try {
     const [r, j] = await askRoom({}, "/video/backup");
@@ -515,6 +518,7 @@ async function startBackup(fromOther) {
     paintDaily();
   } catch (e) {
     mode = "own"; if (daily) { try { daily.destroy(); } catch (x) {} daily = null; }
+    if (J.dailyOnly) { mode = "daily"; switchToOwn(false); return; }   // main video couldn't start: use our own direct room
     $("backup").classList.toggle("hide", !J.backup);
     over("Backup video couldn't start", esc(e.message || "Please try again."), `<button class="btn" id="tryBackup">Try again</button>` + (WA && !host ? `<span class="alt">or <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a></span>` : ""));
   }
@@ -530,7 +534,17 @@ function paintDaily() {
   clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = J.dailyOnly ? "Connected" : "Connected · backup";
   if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
 }
-$("backup").onclick = () => { if (confirmBackup()) startBackup(false); };
+$("backup").onclick = () => { if (J.dailyOnly) { if (mode === "daily") switchToOwn(false); } else if (confirmBackup()) startBackup(false); };
+/* Daily is the main video; this moves both sides to our own direct room (the backup) */
+function switchToOwn(fromOther) {
+  if (mode === "own" || ended) return;
+  mode = "own"; if (!fromOther) send({ type: "backup" });
+  if (daily) { try { daily.leave().catch(() => {}).finally(() => { try { daily.destroy(); } catch (e) {} }); } catch (e) {} daily = null; }
+  dailyStream = null; $("remote").srcObject = null; $("dot").classList.remove("on"); $("backup").classList.add("hide");
+  over("Switching to backup video…", "This takes a few seconds. Please stay on this page.");
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  setTimeout(() => { if (ended || mode !== "own") return; newPC(); waiting(); }, polite ? 0 : 1500);   // the doctor's side calls second, so the patient is ready to answer
+}
 const confirmBackup = () => mode === "own";
 
 /* buttons */
