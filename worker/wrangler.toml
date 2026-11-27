@@ -12,7 +12,7 @@ VAPID_SUBJECT = "mailto:support@arshees.com"
 CALENDAR = "own"
 TIMEZONE = "Asia/Kolkata"
 CLINIC_NAME = "Heal 360 Online Clinic"
-SITE_URL = "https://drmirshadck.github.io/heal360-online-clinic/"
+SITE_URL = "https://www.heal360homoeopathy.com/"
 VIDEO_ENGINE = "daily"   # video: Daily account only (no relay). Needs the secret DAILY_BACKUP_KEY
 CLINIC_WHATSAPP = "917511136045"
 # WhatsApp messages to patients (confirmation, reminders, medicine payment): OFF until the clinic number is Connected and templates are approved (whatsapp-templates.md)
