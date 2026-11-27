@@ -92,10 +92,12 @@ footer{padding:50px 0 90px;font-size:14px;color:var(--mut)}
 /* reveal */
 .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s,transform .8s}.reveal.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+/* nav logo */
+.pill{border-radius:44px;padding:6px 12px 6px 18px;background:#fef9efee}.hero{padding-top:30px}.navlogo{height:84px;width:auto;display:block}
 /* mobile */
 @media(max-width:860px){
  #nav{display:none;position:absolute;top:62px;left:0;right:0;flex-direction:column;background:var(--cream);border-radius:24px;padding:10px;box-shadow:0 14px 40px #0003}#nav.open{display:flex}
- .burger{display:block;margin-left:auto}.pill .go.sm{display:none}
+ .burger{display:block;margin-left:auto}.navlogo{height:64px}#nav{top:80px}.pill .go.sm{display:none}
  .dgrid,.cgrid,.srow,.room-in,.foot{grid-template-columns:1fr}
  .dpic img{width:62%}
  .hero{padding-top:104px}.trio{padding:20px 4px 0}
