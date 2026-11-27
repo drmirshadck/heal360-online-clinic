@@ -54,7 +54,8 @@ export async function videoRoute(req, env, url, p, opts) {
   const exp = Math.min(closes, Date.now() + 4 * 3600e3);
   const ticket = await sign(env, [doc.id, uid, role, exp].join("|"));
   if (role === "patient" && opts.onWaiting) { try { await opts.onWaiting(doc, b); } catch (e) {} }
-  return json({ ...info, ticket, iceServers: await iceServers(env), consentAt: consentAt || null, backup: !!env.DAILY_BACKUP_KEY });
+  const dailyOnly = String(env.VIDEO_ENGINE || "").toLowerCase() === "daily" && !!env.DAILY_BACKUP_KEY;   // Daily account only: no relay, no direct call
+  return json({ ...info, ticket, iceServers: dailyOnly ? [] : await iceServers(env), consentAt: consentAt || null, backup: !!env.DAILY_BACKUP_KEY && !dailyOnly, dailyOnly });
 }
 
 /* who is joining, and is the room open for them */

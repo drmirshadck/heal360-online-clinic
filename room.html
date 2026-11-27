@@ -320,7 +320,7 @@ function lobby() {
   $("appt").innerHTML = `<b>${esc(J.title || "Online video consultation")}</b><span>${esc(when(J.start))} (your time) · ${esc(CLINIC)}</span>`;
 
   const notes = patient ? [
-    ["lock", `<b>Private and not recorded.</b> No video, audio or screenshots are saved by the clinic or this website. The call goes directly between you and the doctor, encrypted. If it can't connect, a backup video service is used — also private and not recorded.`],
+    ["lock", `<b>Private and not recorded.</b> No video, audio or screenshots are saved by the clinic or this website. The call is encrypted and private. It uses a secure video service that does not record it.`],
     ["steth", `<b>An online consultation has limits.</b> The doctor cannot examine you in person and may advise a clinic visit or tests if needed.`],
     ["user", `<b>Be yourself, in a private place.</b> Please don't record the call, and tell the doctor if someone else is with you.`],
     ["alert", `<b>Not for emergencies.</b> For chest pain, trouble breathing, heavy bleeding or fainting, call 112 or go to the nearest hospital.`, "em"]
@@ -404,16 +404,17 @@ async function enter() {
   $("sub").textContent = J.role === "patient" ? (DOC.qual || J.title || "") : (J.title || "Patient");
   $("local").srcObject = local; paintMedia();
   $("backup").classList.toggle("hide", !J.backup);
+  if (J.dailyOnly) { waiting(); startBackup(true); return; }   // this clinic uses one video service only: go straight in
   waiting();
   connect();
 }
 
 function waiting() {
   const other = J.role === "doctor" ? "your patient" : esc(DOC.name || J.other);
-  if (mode === "daily") over("Backup video", `Waiting for ${other} to join the backup video…`);
+  if (mode === "daily") over(J.dailyOnly ? "Video consultation" : "Backup video", `Waiting for ${other} to join…`);
   else over(J.role === "doctor" ? "Waiting for your patient" : "Waiting for the doctor",
     J.role === "doctor" ? "Your patient will appear here as soon as they join." : `${other} will join you here at your appointment time. Please stay on this page.`);
-  $("dot").classList.remove("on"); $("state").textContent = mode === "daily" ? "Backup video" : "Waiting";
+  $("dot").classList.remove("on"); $("state").textContent = mode === "daily" ? (J.dailyOnly ? "Waiting" : "Backup video") : "Waiting";
   // still not connected after 45 seconds: offer the backup video
   clearTimeout(backupOffer);
   if (J.backup && mode === "own") backupOffer = setTimeout(() => {
@@ -500,7 +501,7 @@ async function startBackup(fromOther) {
   if (!fromOther) send({ type: "backup" });                 // the other side moves over with us
   if (pc) { try { pc.close(); } catch (e) {} pc = null; }
   $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = "Backup video"; $("backup").classList.add("hide");
-  over("Switching to backup video…", "This takes a few seconds. Please stay on this page.");
+  over(J.dailyOnly ? "Joining…" : "Switching to backup video…", "This takes a few seconds. Please stay on this page.");
   try {
     const [r, j] = await askRoom({}, "/video/backup");
     if (!r.ok || !j.ok) throw new Error(j.error || "Backup video couldn't start.");
@@ -526,7 +527,7 @@ function paintDaily() {
   const tr = ["video", "audio"].map(k => p.tracks && p.tracks[k] && p.tracks[k].state === "playable" && p.tracks[k].persistentTrack).filter(Boolean);
   const ids = tr.map(t => t.id).join(",");
   if (!dailyStream || dailyStream._ids !== ids) { dailyStream = new MediaStream(tr); dailyStream._ids = ids; $("remote").srcObject = dailyStream; }
-  clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = "Connected · backup";
+  clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = J.dailyOnly ? "Connected" : "Connected · backup";
   if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
 }
 $("backup").onclick = () => { if (confirmBackup()) startBackup(false); };
