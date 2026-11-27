@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /doctor.html
+Disallow: /inbox.html
+Disallow: /room.html
+Disallow: /consult.html
+Disallow: /manage.html
+Disallow: /design-1/
+Disallow: /worker/
+
+Sitemap: https://www.heal360homoeopathy.com/sitemap.xml
