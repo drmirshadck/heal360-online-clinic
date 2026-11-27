@@ -1,6 +1,6 @@
 /* DotCom by Arshees — WhatsApp messages (official WhatsApp Cloud API, Meta), to the PATIENT and to the DOCTOR.
  *
- * Patient (English or Malayalam, the patient chooses on the booking form):
+ * Patient (ONE message with English first, then Malayalam; no language choice):
  *   received, confirmed, reminder24 (day before), reminder30 (30 min before), cancelled (declined / cancelled by the clinic),
  *   medicine (payment link, patient only), followup (medicines ending: ONLY when the doctor added a follow-up date)
  * Doctor (English, to the doctor's own "whatsapp" number in DOCTORS_JSON; skipped if no number):
@@ -21,6 +21,9 @@ function dt(iso, tz) {
   const f = o => new Intl.DateTimeFormat("en-IN", Object.assign({ timeZone: tz }, o)).format(new Date(iso));
   return { day: f({ weekday: "short", day: "numeric", month: "short" }), time: f({ hour: "numeric", minute: "2-digit" }) };
 }
+/* Patient templates are bilingual: body = English part (variables 1..h), Malayalam part (h+1..2h), then the shared lines (link, clinic, website).
+   So params = [...head, ...head, ...tail]. Doctor templates are English only. */
+const bi = (name, head, tail) => ({ name, params: [...head, ...head, ...tail] });
 /* -> { name, params, doctor } for a template, or null */
 export function waMessage(env, doc, b, kind) {
   const tz = env.TIMEZONE || "Asia/Kolkata";
@@ -33,16 +36,16 @@ export function waMessage(env, doc, b, kind) {
   const book = `${site}?doctor=${encodeURIComponent(doc.id)}`;
   const dash = site + "doctor.html", host = roomLink(env, doc, b, true);
   switch (kind) {
-    case "received":   return { name: "booking_received", params: [who, svc, dr, day, time, clinic, site] };
-    case "confirmed":  return { name: "booking_confirmed", params: [who, svc, dr, day, time, room, clinic, site] };
-    case "reminder24": return { name: "reminder_24h", params: [who, dr, day, time, room, clinic, site] };
-    case "reminder30": return { name: "reminder_30m", params: [who, dr, time, room, clinic, site] };
-    case "cancelled":  return { name: "booking_cancelled", params: [who, svc, dr, day, time, book, clinic, site] };
-    case "medicine":   return b.med ? { name: "medicine_payment", params: [who, String(b.med.amount), dr, manage, clinic, site] } : null;
-    case "followup": {
+    case "received":   return bi("booking_received", [who, svc, dr, day, time], [clinic, site]);
+    case "confirmed":  return bi("booking_confirmed", [who, svc, dr, day, time], [room, clinic, site]);
+    case "reminder24": return bi("reminder_24h", [who, dr, day, time], [room, clinic, site]);
+    case "reminder30": return bi("reminder_30m", [who, dr, time], [room, clinic, site]);
+    case "cancelled":  return bi("booking_cancelled", [who, svc, dr, day, time], [book, clinic, site]);
+    case "medicine":   return b.med ? bi("medicine_payment", [who, String(b.med.amount), dr], [manage, clinic, site]) : null;
+    case "followup": {     // the doctor set a follow-up review date; sent only when a date was added
       if (!b.fu) return null;
       const f = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(b.fu.date + "T12:00:00Z"));
-      return { name: "follow_up", params: [who, dr, f, book, clinic, site] };
+      return bi("follow_up", [who, dr, f, day], [book, clinic, site]);
     }
     // ---- to the doctor (English) ----
     case "d_request":    return { doctor: true, name: "doctor_new_request", params: [dr, who, svc, day, time, dash, clinic, site] };
@@ -59,12 +62,11 @@ export async function sendWhatsApp(env, doc, b, kind) {
   const m = waMessage(env, doc, b, kind); if (!m) return { skipped: true };
   const to = String(m.doctor ? doc.whatsapp : b.phone || "").replace(/\D/g, "");
   if (to.length < 10) return { skipped: true };
-  const ml = !m.doctor && b.lang === "ml";
   const r = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(env.WA_PHONE_ID)}/messages`, {
     method: "POST",
     headers: { Authorization: "Bearer " + env.WA_TOKEN, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template",
-      template: { name: ml ? m.name + "_ml" : m.name, language: { code: ml ? "ml" : "en" },
+      template: { name: m.name, language: { code: env.WA_TEMPLATE_LANG || "en" },
         components: [{ type: "body", parameters: m.params.map(t => ({ type: "text", text: clean(t) })) }] } })
   });
   if (!r.ok) throw new Error("whatsapp " + r.status + " " + (await r.text()).slice(0, 200));

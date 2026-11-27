@@ -227,7 +227,7 @@ export class Calendar {
         const id = newId();
         const status = t.confirm ? "pending" : "confirmed";
         const p = a.patient || {};
-        const enc = await this.seal({ name: p.name, email: p.email, phone: p.phone, notes: p.notes, utr: p.utr, tz: p.tz, lang: p.lang === "ml" ? "ml" : "en" });
+        const enc = await this.seal({ name: p.name, email: p.email, phone: p.phone, notes: p.notes, utr: p.utr, tz: p.tz });
         this.sql.exec(`INSERT INTO bookings (id, start, "end", slug, title, status, created, updated, enc, r24, r1, w24) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)`,
           id, start, start + t.length * 6e4, a.slug, t.name, status, Date.now(), Date.now(), enc, start - Date.now() < 26 * 3600e3 ? 1 : 0, start - Date.now() < 26 * 3600e3 ? 1 : 0);
         return { uid: id, status, start: new Date(start).toISOString(), end: new Date(start + t.length * 6e4).toISOString(), title: t.name };
@@ -347,7 +347,7 @@ export class Calendar {
   async view(b) {
     const p = await this.open(b.enc);
     return { uid: b.id, status: b.status, title: b.title || b.slug, slug: b.slug, start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString(),
-      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", lang: p.lang === "ml" ? "ml" : "en", absent: !!b.absent, created: new Date(b.created).toISOString(),
+      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", absent: !!b.absent, created: new Date(b.created).toISOString(),
       fu: b.fu_date ? { date: b.fu_date, sent: !!b.fu_sent } : null,
       med: b.med_amt > 0 ? { amount: b.med_amt, note: b.med_note || "", status: b.med_st || "due", ref: b.med_ref || "", at: new Date(b.med_at || b.updated).toISOString() } : null };
   }
