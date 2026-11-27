@@ -59,7 +59,7 @@ h1{font-size:clamp(40px,7vw,92px);margin-bottom:22px;animation:rise 1s .2s both}
 .dbody ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 16px}.dbody li{font-size:13px;background:#ffffff18;padding:5px 12px;border-radius:99px}
 .dbody .go{margin-top:auto;align-self:flex-start}
 /* care */
-.care,.steps,.faq{padding:100px 0}
+.care,.steps,.faq,.fees{padding:100px 0}.feenote{margin-top:22px;color:var(--mut);max-width:720px}.chip2{display:inline-block;background:#173b3d14;border-radius:99px;padding:3px 12px;font-size:13px;margin-bottom:10px;color:var(--teal)}.fname{display:block;font-size:17px;margin-bottom:2px;color:var(--teal)}.small a{text-decoration:underline}
 .cgrid,.srow{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .cc,.st{background:var(--beige);border-radius:26px;padding:30px;min-height:240px;transition:.4s}.cc:hover,.st:hover{transform:translateY(-5px)}
 .cc b,.st span{display:block;font-size:44px;letter-spacing:-.04em;color:#c9a35b;margin-bottom:34px;font-weight:300}

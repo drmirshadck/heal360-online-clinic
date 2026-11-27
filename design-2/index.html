@@ -10,6 +10,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<meta property="og:title" content="Heal 360 Online Clinic | Care that connects globally">
+<meta property="og:description" content="Online homoeopathy video consultation with three lady doctors. New consultation &#8377;300, free follow-up within 7 days.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="logo-real/mark-512.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalClinic","name":"Heal 360 Online Clinic","slogan":"Care that connects globally.","medicalSpecialty":"Homeopathy","telephone":"+917511136045","availableService":{"@type":"MedicalTherapy","name":"Online homoeopathic video consultation"},"employee":[{"@type":"Physician","name":"Dr. Seena Naseem K.A."},{"@type":"Physician","name":"Dr. Shameema"},{"@type":"Physician","name":"Dr. Musheera K."}]}</script>
 <link rel="icon" type="image/png" href="logo-real/favicon-64.png">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -21,6 +26,7 @@
     <a href="#doctors">Our doctors</a>
     <a href="#care">Care</a>
     <a href="#steps">How it works</a>
+    <a href="#fees">Fees</a>
     <a href="room.html">Consultation room</a>
     <a href="#faq">Questions</a>
   </nav>
@@ -88,6 +94,16 @@
   </div>
 </section>
 
+<!-- FEES -->
+<section class="fees" id="fees">
+  <div class="wrap">
+    <p class="eyebrow dark">Simple, clear fees</p>
+    <h2>Pay once.<br>Follow up free for a week.</h2>
+    <div class="cgrid" id="feegrid"></div>
+    <p class="feenote">Every doctor follows the same cycle. It starts on the day of your new consultation. From the 15th day, a new consultation applies. We recognise you by your mobile number, so please use the same number each time.</p>
+  </div>
+</section>
+
 <!-- ROOM -->
 <section class="room" id="room">
   <div class="wrap room-in">
@@ -114,6 +130,10 @@
     <details open><summary>How does an online consultation work?</summary><p>You book a time, receive a private video link by email, and join from your phone or computer. Your doctor speaks with you, asks about your history and advises a plan.</p></details>
     <details><summary>Which doctor should I choose?</summary><p>Dr. Seena is the specialist for children and allergies, Dr. Shameema for carpal tunnel syndrome and hand numbness, and Dr. Musheera for skin and hair health. If you are unsure, send a WhatsApp message and we will guide you.</p></details>
     <details><summary>Is an online consultation right for emergencies?</summary><p>No. Online consultations are not for emergencies. In an emergency, call your local emergency number (112 in India) or go to the nearest hospital.</p></details>
+    <details><summary>What are the fees?</summary><p>A new consultation is &#8377;300. A follow-up within 7 days of your consultation is free, and a follow-up on days 8 to 14 is &#8377;150. From the 15th day a new consultation applies.</p></details>
+    <details><summary>How do I pay?</summary><p>You pay by UPI while booking. Scan the QR code or tap Pay in your UPI app, and the payment goes straight to your doctor. Your doctor confirms the booking after seeing the payment.</p></details>
+    <details><summary>What if my doctor advises medicines?</summary><p>Your doctor adds the medicine amount for you. You then receive a payment link by email, and the payment goes to that doctor's own UPI. Your booking page shows the amount and lets you tell us when you have paid.</p></details>
+    <details><summary>Can I change or cancel my booking?</summary><p>Yes. Use the Change or cancel link in your booking email. Changes close a short time before the consultation, so please do it early.</p></details>
     <details><summary>Is my consultation private?</summary><p>Yes. Your video room is private to your booking and the call is not recorded.</p></details>
   </div>
 </section>
@@ -133,9 +153,9 @@
 
 <footer>
   <div class="wrap foot">
-    <div><img class="flogo" src="logo-real/heal360-logo-transparent.png" alt="Heal 360 Homoeopathy Online Clinic" width="1100" height="628" loading="lazy"><span class="slogan sm">Care that connects globally.</span><p>Online homoeopathic consultations<br><a href="tel:+917511136045">+91 75111 36045</a></p></div>
+    <div><b class="fname">Heal 360 Online Clinic</b><span class="slogan sm">Care that connects globally.</span><p>Online homoeopathic consultations<br><a href="tel:+917511136045">+91 75111 36045</a></p></div>
     <div class="regs"><b>TCMC registration</b><br>Dr. Seena Naseem K.A. · 10868<br>Dr. Shameema · 10829<br>Dr. Musheera K. · 11350</div>
-    <div class="small">Online consultations are not for emergencies. In an emergency call 112.<br><a href="doctor.html" class="quiet" aria-label="Clinic login">©</a> 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
+    <div class="small"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a><br>Online consultations are not for emergencies. In an emergency call 112.<br><a href="doctor.html" class="quiet" aria-label="Clinic login">©</a> 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
   </div>
 </footer>
 
@@ -145,5 +165,11 @@
 <script src="script.js"></script>
 <script src="qrcode.js"></script>
 <script src="booking.js"></script>
+<script>
+(function(){try{var T=(window.SITE&&SITE.consultations&&SITE.consultations.types)||[],g=document.getElementById("feegrid");if(!g)return;
+var by=function(k){return T.filter(function(x){return x.calSlug===k})[0]||{fee:0}};
+var cards=[["New consultation","\u20B9"+by("online-video-consultation").fee,"Day 1","Your first consultation, with a complete case history. Starts your 14-day cycle."],["Free follow-up","Free","Within 7 days","Come back within 7 days of your consultation at no charge."],["Follow-up","\u20B9"+by("follow-up-paid").fee,"Days 8 to 14","A review in the second week. From day 15 a new consultation applies."]];
+g.innerHTML=cards.map(function(c){return '<article class="cc reveal in"><b>'+c[1]+'</b><h3>'+c[0]+'</h3><p><span class="chip2">'+c[2]+'</span><br>'+c[3]+'</p></article>'}).join("")}catch(e){}})();
+</script>
 </body>
 </html>
