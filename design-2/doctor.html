@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Doctor dashboard</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>')</script><!-- always the newest settings -->
+<!-- Standard package: the doctor's private page. Details come from config.js; secrets stay in the Cloudflare helper. -->
+<style>
+  :root{--brand:#0e8a8a;--deep:#074a50;--accent:#d94a3d;--light:#9fe3dc;--bg:#f3f7f8;--card:#fff;--fg:#1d3239;--muted:#5d727a;--line:#e1eaec;--ok:#1e8e3e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Nunito Sans",system-ui,sans-serif;background:var(--bg);color:var(--fg);min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+  button{font:inherit;cursor:pointer}
+  header{background:var(--deep);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:5}
+  header b{font:700 17px Outfit}header small{display:block;opacity:.75;font-size:12.5px}
+  .hbtn{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:700;font-size:13.5px}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  .login{max-width:360px;margin:12vh auto 0;background:var(--card);border-radius:22px;padding:28px;text-align:center;box-shadow:0 20px 50px -30px rgba(0,0,0,.35)}
+  .login img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 20%;margin-bottom:12px}
+  .login h1{font:700 22px Outfit;color:var(--deep)}
+  .login p{color:var(--muted);margin:6px 0 18px}
+  .pin{width:100%;font:700 26px Outfit;letter-spacing:.4em;text-align:center;padding:14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:14px}
+  .pin:focus{outline:2px solid var(--light);border-color:var(--brand)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:12px 20px;font-weight:700;font-size:15px;background:var(--brand);color:#fff;text-decoration:none}
+  .btn.full{width:100%}.btn.ghost{background:transparent;color:var(--deep);border:1.5px solid var(--line)}
+  .btn.ok{background:var(--ok)}.btn.no{background:#fff;color:#b3261e;border:1.5px solid #f1c9c6}
+  .btn.wa{background:#25d366}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .err{color:#b3261e;min-height:1.3em;margin-top:10px;font-size:14px}
+  .tabs{display:flex;gap:8px;margin:4px 0 14px}
+  .tab{flex:1;border:0;background:var(--card);border-radius:14px;padding:12px;font-weight:700;color:var(--muted);border:1.5px solid var(--line)}
+  .tab[aria-selected=true]{background:var(--deep);color:#fff;border-color:var(--deep)}
+  .tab .n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:#fff;font-size:12px;margin-left:6px;padding:0 6px}
+  .tab[aria-selected=true] .n{background:#fff;color:var(--deep)}
+  .card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .card h3{font:700 17px Outfit;color:var(--deep)}
+  .when{font-weight:700;text-align:right;white-space:nowrap}.when small{display:block;font-weight:600;color:var(--muted)}
+  .meta{color:var(--muted);font-size:14px;margin-top:6px;display:grid;gap:3px}
+  .meta a{color:var(--brand);font-weight:700;text-decoration:none}
+  .upi{display:inline-block;background:#eef8f1;color:var(--ok);font-weight:700;border-radius:8px;padding:2px 8px;font-size:13px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.acts .btn{flex:1;min-width:120px}
+  .empty{text-align:center;color:var(--muted);padding:40px 10px}
+  .bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+  .note{font-size:13px;color:var(--muted)}
+  .notify{background:#fff8e6;border:1px solid #f3dfa8;border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:14px}
+  .today{border-left:4px solid var(--accent)}
+  .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--deep);color:#fff;padding:12px 18px;border-radius:999px;font-weight:700;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.on{opacity:1}
+  dialog{border:0;border-radius:20px;padding:22px;max-width:380px;width:calc(100% - 32px)}
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+  dialog h3{font:700 19px Outfit;color:var(--deep);margin-bottom:8px}
+  dialog textarea{width:100%;min-height:80px;border:1.5px solid var(--line);border-radius:12px;padding:10px;font:inherit;margin:10px 0}
+  .tt h3{font:700 16px Outfit,system-ui,sans-serif;color:var(--deep);margin:4px 0 10px}
+  .dayrow{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+  .dayrow:first-of-type{border-top:0}
+  .dayrow b{font-size:14px}
+  .wins{display:grid;gap:6px}
+  .win{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+  .win input[type=time]{flex:1 1 0;min-width:0;width:auto;font-size:14px;padding:7px 4px}
+  .win span{flex:none;font-size:13px;color:var(--muted)}
+  .win .x{flex:none}
+  .win input[type=time],.tt input[type=date],.tt input[type=number],.tt input[type=text]{font:inherit;border:1.5px solid var(--line);border-radius:10px;padding:7px 8px;background:#fff}
+  .tt input[type=number]{width:80px}
+  .x{border:0;background:#fdeceb;color:#b3261e;border-radius:10px;padding:7px 10px;font-weight:700}
+  .add{border:1.5px dashed var(--line);background:#fff;color:var(--deep);border-radius:10px;padding:6px 10px;font-weight:700;justify-self:start}
+  .closed{color:var(--muted);font-size:14px;padding-top:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid2 label{font-size:13.5px;color:var(--muted);display:grid;gap:4px}
+  .leave{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .save{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<header><div><b id="dn"></b><small>Doctor dashboard</small></div><div id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></div></header>
+<main id="main"></main>
+<dialog id="dlg"><h3>Decline this booking?</h3><p class="note">The patient gets an email that the booking was declined. If they already paid, refund them by UPI.</p><textarea id="reason">The doctor is not available at this time. Please book another slot.</textarea><div class="acts"><button class="btn ghost" id="dNo">Keep it</button><button class="btn no" id="dYes">Decline</button></div></dialog>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+const S = window.SITE;
+const DOCS = (S.doctors && S.doctors.length) ? S.doctors : null;   // several doctors: each logs in with their own PIN
+const meStore = { get(){ try { return JSON.parse(localStorage.getItem("docMe") || "null"); } catch(e){ return null; } }, set(v){ try { v ? localStorage.setItem("docMe", JSON.stringify(v)) : localStorage.removeItem("docMe"); } catch(e){} } };
+let me = meStore.get();
+const D = { name: S.doctor.name, photo: S.doctor.photo };
+function applyMe() {
+  const cfg = DOCS && me ? DOCS.find(d => d.id === me.id) : null;
+  D.name = (cfg && cfg.name) || (me && me.name && DOCS ? me.name : S.doctor.name);
+  D.photo = (cfg && cfg.photo) || S.doctor.photo;
+  $("dn").textContent = D.name; document.title = "Dashboard · " + D.name;
+}
+const API = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const r = document.documentElement.style;
+r.setProperty("--brand", S.theme.brand); r.setProperty("--deep", S.theme.brandDeep); r.setProperty("--accent", S.theme.accent); r.setProperty("--light", S.theme.light);
+applyMe();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+const store = { get(){ try { return localStorage.getItem("docToken") || ""; } catch(e){ return ""; } }, set(v){ try { v ? localStorage.setItem("docToken", v) : localStorage.removeItem("docToken"); } catch(e){} } };
+let token = store.get(), data = { pending: [], upcoming: [] }, tab = "pending", timer = null;
+
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 2600); }
+async function api(path, opts = {}) {
+  if (!API) throw new Error("The dashboard is not connected yet (helper URL missing in config.js).");
+  const res = await fetch(API + path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) } });
+  const d = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "/login") { logout(); throw new Error("Please log in again."); }
+  if (!res.ok) throw new Error(d.error || "Something went wrong.");
+  return d;
+}
+
+/* ---------- login ---------- */
+function showLogin(msg) {
+  $("hdrBtns").hidden = true;
+  const many = !!DOCS && !me;
+  $("main").innerHTML = `<form class="login" id="lf">${many ? "" : `<img src="${esc(D.photo)}" alt="">`}<h1>${esc(many ? (S.contact.clinicName || "Doctor login") : D.name)}</h1><p>${many ? "Doctors: enter your own PIN to see your bookings." : "Enter your PIN to see your bookings."}</p>
+    <input class="pin" id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" aria-label="PIN" required>
+    <button class="btn full" id="lb">Open dashboard</button><p class="err" id="le">${esc(msg || "")}</p></form>`;
+  $("pin").focus();
+  $("lf").onsubmit = async e => {
+    e.preventDefault(); const b = $("lb"); b.disabled = true; $("le").textContent = "";
+    try { const d = await api("/login", { method: "POST", body: JSON.stringify({ pin: $("pin").value.trim() }) }); token = d.token; store.set(token); me = d.doctor || null; meStore.set(me); applyMe(); if (new URLSearchParams(location.search).get("next") === "room") return openRoom(); start(); }
+    catch (er) { $("le").textContent = er.message; b.disabled = false; $("pin").select(); }
+  };
+}
+function logout(){ token = ""; store.set(""); me = null; meStore.set(null); applyMe(); clearInterval(timer); showLogin(); }
+$("logout").onclick = logout;
+$("refresh").onclick = () => load(true);
+
+/* ---------- dashboard ---------- */
+const TZ = "Asia/Kolkata";
+const ALLTYPES = (S.consultations.types || []).concat(...(DOCS || []).map(d => d.consultations || []));
+const typeName = t => { const m = ALLTYPES.find(x => x.calSlug === t || x.name === t); return m ? m.name : String(t).replace(/-/g, " ").replace(/^./, c => c.toUpperCase()); };
+const day = d => new Date(d).toLocaleDateString("en-IN", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" });
+const time = d => new Date(d).toLocaleTimeString("en-IN", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
+const isToday = d => day(d) === day(Date.now());
+const upiRef = n => (String(n).match(/UPI ref:\s*(\d{12})/i) || [])[1] || "";
+const phoneDigits = p => String(p).replace(/\D/g, "");
+
+function start(){ $("hdrBtns").hidden = false; load(); clearInterval(timer); timer = setInterval(() => document.visibilityState === "visible" && load(), 60000); }
+async function load(manual) {
+  try { data = await api("/bookings"); render(); if (manual) toast("Up to date"); }
+  catch (e) { if (token) { $("main").innerHTML = `<div class="empty">${esc(e.message)}<br><br><button class="btn" onclick="location.reload()">Try again</button></div>`; } }
+}
+function render() {
+  const p = data.pending.length, u = data.upcoming.length;
+  const canNotify = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  const notifyBox = canNotify && Notification.permission !== "granted"
+    ? `<div class="notify"><span>Get a notification on this phone when a patient books.</span><button class="btn" id="nb">Turn on</button></div>`
+    : (!canNotify && /iphone|ipad/i.test(navigator.userAgent) ? `<div class="notify"><span>On iPhone, add this page to your Home Screen (Share → Add to Home Screen) to get booking notifications.</span></div>` : "");
+  const list = tab === "pending" ? data.pending : data.upcoming;
+  $("main").innerHTML = `${notifyBox}
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-t="pending" aria-selected="${tab === "pending"}">Requests${p ? `<span class="n">${p}</span>` : ""}</button>
+      <button class="tab" role="tab" data-t="upcoming" aria-selected="${tab === "upcoming"}">Upcoming${u ? `<span class="n">${u}</span>` : ""}</button>
+      ${data.own ? `<button class="tab" role="tab" data-t="timetable" aria-selected="${tab === "timetable"}">Timetable</button>` : ""}
+    </div>
+    ${tab === "timetable" ? `<div id="tt" class="tt"><div class="empty">Loading timetable…</div></div>` : list.length ? list.map(card).join("") : `<div class="empty">${tab === "pending" ? "No new requests. You'll be notified when a patient books." : "No upcoming consultations."}</div>`}
+    <p class="note" style="text-align:center;margin-top:10px">Times are in India time (IST). Updates every minute.</p>`;
+  document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
+  document.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => confirmB(b));
+  document.querySelectorAll("[data-no]").forEach(b => b.onclick = () => declineB(b.dataset.no));
+  document.querySelectorAll("[data-call]").forEach(b => b.onclick = () => startCall(b));
+  document.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => declineB(b.dataset.cx, true));
+  if ($("nb")) $("nb").onclick = enablePush;
+  if (tab === "timetable") loadTT();
+}
+function card(b) {
+  const ref = b.utr || upiRef(b.notes), ph = phoneDigits(b.phone);
+  const other = b.notes.replace(/UPI ref:\s*\d{12}\s*(\(₹?\d+\))?/i, "").trim();
+  const pend = tab === "pending";
+  const base = location.origin + location.pathname.replace(/doctor\.html$/, "");
+  const link = (data.own && b.t) ? `${base}room.html?${me && me.id && me.id !== "main" ? "d=" + encodeURIComponent(me.id) + "&" : ""}b=${encodeURIComponent(b.uid)}&t=${encodeURIComponent(b.t)}` : `${base}consult.html${roomQ()}`;
+  const msg = `Hello ${b.name}, your consultation with ${D.name} is confirmed for ${day(b.start)} at ${time(b.start)} IST. Join here at that time: ${link}`;
+  return `<div class="card${!pend && isToday(b.start) ? " today" : ""}">
+    <div class="top"><div><h3>${esc(b.name)}</h3><div class="meta"><span>${esc(typeName(b.title))}</span></div></div>
+      <div class="when">${isToday(b.start) ? "Today" : esc(day(b.start))}<small>${esc(time(b.start))}</small></div></div>
+    <div class="meta">
+      ${ph ? `<span>WhatsApp: <a href="https://wa.me/${ph}" target="_blank" rel="noopener">${esc(b.phone)}</a></span>` : ""}
+      ${ref ? `<span>Paid by UPI · <span class="upi">Ref ${esc(ref)}</span></span>` : (pend ? `<span>No UPI reference entered. Check your UPI app.</span>` : "")}
+      ${other ? `<span>Note: ${esc(other)}</span>` : ""}
+    </div>
+    <div class="acts">${pend
+      ? `<button class="btn no" data-no="${esc(b.uid)}">Decline</button><button class="btn ok" data-ok="${esc(b.uid)}" data-name="${esc(b.name)}">Confirm</button>`
+      : `${ph ? `<a class="btn wa" href="https://wa.me/${ph}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Send link</a>` : ""}<button class="btn" data-call="1" data-uid="${esc(b.uid)}">Start call</button>${data.own ? `<button class="btn no" data-cx="${esc(b.uid)}">Cancel</button>` : ""}`}</div>
+  </div>`;
+}
+async function confirmB(btn) {
+  btn.disabled = true;
+  try { await api("/confirm", { method: "POST", body: JSON.stringify({ uid: btn.dataset.ok }) }); toast(data.own && !data.emails ? `Confirmed. Tap "Send link" to tell ${btn.dataset.name} on WhatsApp.` : `Confirmed. ${btn.dataset.name} gets an email.`); tab = data.own && !data.emails ? "upcoming" : tab; await load(); }
+  catch (e) { toast(e.message); btn.disabled = false; }
+}
+function declineB(uid, cancel) {
+  const dlg = $("dlg"); const b = [...data.pending, ...data.upcoming].find(x => x.uid === uid) || {};
+  dlg.querySelector("h3").textContent = cancel ? "Cancel this consultation?" : "Decline this booking?";
+  dlg.querySelector(".note").textContent = data.own && !data.emails ? "After this, WhatsApp opens so you can tell the patient. If they already paid, refund them by UPI." : "The patient gets an email. If they already paid, refund them by UPI.";
+  $("dYes").textContent = cancel ? "Cancel consultation" : "Decline";
+  dlg.showModal();
+  $("dNo").onclick = () => dlg.close();
+  $("dYes").onclick = async () => {
+    $("dYes").disabled = true;
+    try {
+      const reason = $("reason").value;
+      await api(cancel ? "/cancel-booking" : "/decline", { method: "POST", body: JSON.stringify({ uid, reason }) }); dlg.close();
+      const ph = phoneDigits(b.phone || "");
+      if (data.own && !data.emails && ph) window.open(`https://wa.me/${ph}?text=${encodeURIComponent(`Hello ${b.name}, sorry — your ${cancel ? "consultation" : "booking request"} with ${D.name} on ${day(b.start)} at ${time(b.start)} IST is ${cancel ? "cancelled" : "not possible"}. ${reason} You can book another time at ${location.origin}${location.pathname.replace(/doctor\.html$/, "")}`)}`, "_blank");
+      toast(cancel ? "Cancelled." : "Declined."); await load();
+    }
+    catch (e) { toast(e.message); }
+    $("dYes").disabled = false;
+  };
+}
+const roomQ = () => (DOCS && me && me.id && me.id !== "main") ? "?d=" + encodeURIComponent(me.id) : "";
+async function openRoom() {
+  $("main").innerHTML = `<div class="empty">Opening the consultation room…</div>`;
+  try { const d = await api("/host-token", { method: "POST" }); location.href = "consult.html" + (roomQ() ? roomQ() + "&" : "?") + "host=" + encodeURIComponent(d.token); }
+  catch (e) { $("main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+async function startCall(btn) {
+  if (data.own && btn.dataset.uid) {   // own video room: the doctor joins this booking's room
+    try { sessionStorage.setItem("dcbHost", token); } catch (e) {}
+    location.href = `room.html?${me && me.id && me.id !== "main" ? "d=" + encodeURIComponent(me.id) + "&" : ""}b=${encodeURIComponent(btn.dataset.uid)}&host=1`;
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Opening…";
+  try { const d = await api("/host-token", { method: "POST" }); location.href = "consult.html" + (roomQ() ? roomQ() + "&" : "?") + "host=" + encodeURIComponent(d.token); }
+  catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Start call"; }
+}
+
+/* ---------- timetable (own calendar) ---------- */
+const DAYS = [["1","Mon"],["2","Tue"],["3","Wed"],["4","Thu"],["5","Fri"],["6","Sat"],["0","Sun"]];
+let sched = null;
+async function loadTT() {
+  try { if (!sched) sched = (await api("/schedule")).schedule; drawTT(); }
+  catch (e) { $("tt").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+function drawTT() {
+  const s = sched, wk = s.week || {};
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
+  const leave = (s.leave || []).filter(l => (l.to || l.from) >= today);
+  const thisMonth = today.slice(0, 7), lastMonth = (() => { const d = new Date(today + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); })();
+  $("tt").innerHTML = `
+    <div class="card"><h3>Working hours</h3>
+      ${DAYS.map(([k, n]) => `<div class="dayrow"><b>${n}</b><div class="wins">
+        ${(wk[k] || []).map((w, i) => `<div class="win"><input type="time" value="${w[0]}" data-d="${k}" data-i="${i}" data-e="0" aria-label="${n} from"><span>to</span><input type="time" value="${w[1]}" data-d="${k}" data-i="${i}" data-e="1" aria-label="${n} until"><button class="x" data-del="${k}:${i}" aria-label="Remove">✕</button></div>`).join("") || `<span class="closed">Closed</span>`}
+        <button class="add" data-add="${k}">+ Add hours</button></div></div>`).join("")}
+    </div>
+    <div class="card"><h3>Booking rules</h3><div class="grid2">
+      <label>Gap between patients (min)<input type="number" min="0" max="120" id="gap" value="${s.gap ?? 10}"></label>
+      <label>Earliest booking (hours from now)<input type="number" min="0" max="168" id="notice" value="${s.notice ?? 3}"></label>
+      <label>Book up to (days ahead)<input type="number" min="1" max="180" id="ahead" value="${s.ahead ?? 30}"></label>
+      <label>Max patients a day (0 = no limit)<input type="number" min="0" max="200" id="maxPerDay" value="${s.maxPerDay ?? 0}"></label>
+    </div></div>
+    <div class="card"><h3>Leave / days off</h3>
+      ${leave.length ? leave.map(l => `<div class="leave"><span><b>${esc(l.from === l.to ? fmtD(l.from) : fmtD(l.from) + " – " + fmtD(l.to))}</b>${l.note ? " · " + esc(l.note) : ""}</span><button class="x" data-lv="${esc(l.from)}|${esc(l.to)}">✕</button></div>`).join("") : `<p class="note">No leave added.</p>`}
+      <div class="grid2" style="margin-top:10px"><label>From<input type="date" id="lf" min="${today}"></label><label>To (optional)<input type="date" id="lt" min="${today}"></label></div>
+      <label class="note" style="display:grid;gap:4px;margin-top:8px">Note (only you see it)<input type="text" id="ln" maxlength="80" placeholder="e.g. Conference"></label>
+      <button class="btn ghost" id="addLeave" style="margin-top:10px">Add leave</button>
+      <p class="note" style="margin-top:8px">Bookings already made on these days stay — cancel them from Upcoming if needed.</p>
+    </div>
+    <div class="card"><h3>Download bookings</h3><p class="note">A list of your patients' bookings for the month (opens in Excel). Keep it as your record — old bookings are removed from DotCom automatically after a year.</p>
+      <div class="acts"><button class="btn ghost" data-exp="${lastMonth}">${monthName(lastMonth)}</button><button class="btn ghost" data-exp="${thisMonth}">${monthName(thisMonth)}</button></div></div>
+    <button class="btn full save" id="saveTT">Save timetable</button>`;
+  const tt = $("tt");
+  tt.querySelectorAll("input[type=time]").forEach(i => i.onchange = () => { wk[i.dataset.d][+i.dataset.i][+i.dataset.e] = i.value; });
+  tt.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const [d, i] = b.dataset.del.split(":"); wk[d].splice(+i, 1); drawTT(); });
+  tt.querySelectorAll("[data-add]").forEach(b => b.onclick = () => { const d = b.dataset.add; (wk[d] = wk[d] || []).push((wk[d] || []).length ? ["17:00", "20:00"] : ["10:00", "13:00"]); drawTT(); });
+  tt.querySelectorAll("[data-lv]").forEach(b => b.onclick = () => { const [f, t] = b.dataset.lv.split("|"); s.leave = (s.leave || []).filter(l => !(l.from === f && (l.to || l.from) === t)); drawTT(); });
+  tt.querySelectorAll("[data-exp]").forEach(b => b.onclick = () => exportMonth(b.dataset.exp, b));
+  $("addLeave").onclick = () => {
+    const f = $("lf").value, t = $("lt").value || f;
+    if (!f) return toast("Choose the first day of leave.");
+    if (t < f) return toast("The last day can't be before the first.");
+    (s.leave = s.leave || []).push({ from: f, to: t, note: $("ln").value.trim() }); drawTT(); toast("Added — tap Save timetable.");
+  };
+  $("saveTT").onclick = async () => {
+    for (const [k, n] of DAYS) for (const w of wk[k] || []) if (!w[0] || !w[1] || w[0] >= w[1]) return toast(`${n}: the end time must be after the start time.`);
+    const btn = $("saveTT"); btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      const body = { week: wk, leave: s.leave || [], gap: +$("gap").value, notice: +$("notice").value, ahead: +$("ahead").value, maxPerDay: +$("maxPerDay").value };
+      sched = (await api("/schedule", { method: "POST", body: JSON.stringify({ schedule: body }) })).schedule; drawTT(); toast("Timetable saved. Patients see the new times now.");
+    } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Save timetable"; }
+  };
+}
+const fmtD = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const monthName = m => new Date(m + "-15T12:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+async function exportMonth(m, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + "/export?month=" + m, { headers: { Authorization: "Bearer " + token } });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not download.");
+    const url = URL.createObjectURL(await res.blob()); const a = document.createElement("a");
+    a.href = url; a.download = `${D.name.replace(/[^\w]+/g, "-")}-bookings-${m}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (e) { toast(e.message); }
+  btn.disabled = false;
+}
+
+/* ---------- phone notifications ---------- */
+const keyBytes = b => { b = b.replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "="; return Uint8Array.from(atob(b), c => c.charCodeAt(0)); };
+async function enablePush() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("Notifications are blocked. Allow them in your browser settings."); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const { key } = await api("/vapid");
+    if (!key) throw new Error("Notifications are not set up yet.");
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+    await api("/subscribe", { method: "POST", body: JSON.stringify({ subscription: sub.toJSON() }) });
+    toast("Notifications are on for this phone."); render();
+  } catch (e) { toast(e.message || "Could not turn on notifications."); }
+}
+
+token ? (new URLSearchParams(location.search).get("next") === "room" ? openRoom() : start()) : showLogin();
+})();
+</script>
+</body>
+</html>
