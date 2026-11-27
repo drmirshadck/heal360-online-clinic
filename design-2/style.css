@@ -85,19 +85,19 @@ details p{margin-top:12px;color:var(--mut)}
 .final{background:var(--teal);color:#fff;padding:110px 0;border-radius:40px;margin:0 8px}
 .final h2{margin-bottom:14px}.final p{color:#ffffffcc;margin-bottom:26px}.final .call{margin:22px 0 0;font-size:15px}.final .call a{text-decoration:underline}
 footer{padding:50px 0 90px;font-size:14px;color:var(--mut)}
-.foot{display:grid;grid-template-columns:1.2fr 1fr 1.4fr;gap:30px}.foot .flogo{height:auto;width:200px;max-width:100%;margin-bottom:10px;}
+.foot{display:grid;grid-template-columns:1.2fr 1fr 1.4fr;gap:30px}.foot .flogo{height:auto;width:210px;max-width:100%;margin-bottom:4px;display:block}
 .quiet{color:inherit}
 .wa{position:fixed;right:16px;bottom:16px;z-index:40;background:#25d366;color:#fff;padding:12px 18px;border-radius:99px;font-weight:500;box-shadow:0 8px 24px #0003}
-.brandband{padding:70px 0 20px;text-align:center}.brandband img{display:block;margin:0 auto;width:min(560px,86%);height:auto;}
+.brandband{padding:70px 0 20px;text-align:center}.brandband img{display:block;margin:0 auto;width:min(520px,84%);height:auto}.slogan{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:clamp(22px,3.4vw,32px);color:var(--teal);margin:6px 0 0;letter-spacing:.01em}.slogan.sm{display:block;font-size:17px;margin:0 0 12px}
 /* reveal */
 .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s,transform .8s}.reveal.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
 /* nav logo */
-.pill{border-radius:36px;padding:5px 10px 5px 16px;background:#fef9efee}.navlogo{height:58px;width:auto;display:block}
+.pill{border-radius:36px;padding:5px 10px 5px 16px;background:#fef9efee}.navlogo{height:60px;width:auto;display:block}
 /* mobile */
 @media(max-width:860px){
  #nav{display:none;position:absolute;top:62px;left:0;right:0;flex-direction:column;background:var(--cream);border-radius:24px;padding:10px;box-shadow:0 14px 40px #0003}#nav.open{display:flex}
- .burger{display:block;margin-left:auto}.navlogo{height:46px}#nav{top:64px}.pill .go.sm{display:none}
+ .burger{display:block;margin-left:auto}.navlogo{height:48px}#nav{top:64px}.pill .go.sm{display:none}
  .dgrid,.cgrid,.srow,.room-in,.foot{grid-template-columns:1fr}
  .dpic img{width:62%}
  .hero{padding-top:104px}.trio{padding:20px 4px 0}
