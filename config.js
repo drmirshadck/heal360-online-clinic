@@ -24,6 +24,8 @@ window.SITE = {
   doctors: [
     {
       id: "seena",
+      upiId: "seenasanthi@okaxis",
+      payeeName: "Dr. Seena Naseem K.A.",
       title: "BHMS, MD (Paediatrics) · TCMC Reg. 10868",
       languages: "Malayalam, English",
       name: "Dr. Seena Naseem K.A.",
@@ -44,6 +46,8 @@ window.SITE = {
     },
     {
       id: "shameema",
+      upiId: "drshameemasl@okhdfcbank",
+      payeeName: "Dr. Shameema P",
       title: "BHMS, MD (Homoeopathy) Scholar · TCMC Reg. 10829",
       languages: "Malayalam, English",
       name: "Dr. Shameema",
@@ -65,6 +69,8 @@ window.SITE = {
     },
     {
       id: "musheera",
+      upiId: "kmusheera-1@okaxis",
+      payeeName: "Dr. Musheera K.",
       title: "BHMS · TCMC Reg. 11350",
       languages: "Malayalam, English",
       name: "Dr. Musheera K.",
