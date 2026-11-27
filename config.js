@@ -53,20 +53,21 @@ window.SITE = {
       languages: "Malayalam, English",
       name: "Dr. Shameema",
       quals: "BHMS, MD (Homoeopathy) Scholar",
-      role: "Carpal Tunnel Syndrome & Nerve Pain",
+      role: "Nerve Pain & Carpal Tunnel Syndrome",
       tag: "Nerves & Hands",
       photo: "img/shameema-face.jpg",
       reg: "10829",
       years: "10+ years",
-      hook: "Do your hands go numb at night? Tingling or pain in your fingers, or dropping things because your grip feels weak?",
+      hook: "Do your hands go numb at night? Do you have neck pain that spreads to your shoulders and arms? Does back pain travel down your leg and make walking or sitting difficult?",
       bio: [
-        "These are common signs of Carpal Tunnel Syndrome, where a nerve in the wrist gets pressed, causing pain and numbness in the hand.",
-        "Dr. Shameema is a caring homoeopathic physician with over 10 years of experience, and treating this problem is her special interest. She completed her BHMS at Government Homoeopathic Medical College, Kozhikode, and is now pursuing her MD at the same college.",
-        "In her years of practice she has helped many patients find relief from hand pain, numbness and tingling. Some had already been advised surgery, and in her experience many improved with homoeopathic medicines and were able to avoid it.",
-        "She takes time to listen to your problem, understand your health history and daily routine, and plan treatment that suits you personally."
+        "These problems often come from nerves that are pressed or irritated, and they can affect daily life and sleep.",
+        "Dr. Shameema is a caring homoeopathic physician with over 10 years of experience in treating nerve-related pain and disorders. She completed her BHMS at Government Homoeopathic Medical College, Kozhikode, and is now pursuing her MD at the same college.",
+        "Her special interest is Carpal Tunnel Syndrome. In her years of practice, she has helped many patients find relief from hand pain and numbness. Some of them had already been advised surgery, and in her experience many improved with homoeopathic medicines and were able to avoid it.",
+        "She takes time to listen to your problem, understand your health history and daily routine, and plan treatment that suits you personally.",
+        "Through online consultation, you can talk to her from your home, wherever you are, with clear guidance and personal attention."
       ],
-      areas: ["Carpal Tunnel Syndrome", "Hand pain, numbness & tingling", "Weak grip & dropping things", "Night-time numbness of the hands"],
-      vision: "Her belief: healing is not just about relieving symptoms, but restoring the whole person."
+      areas: ["Carpal Tunnel Syndrome: pain, numbness and tingling in the hands and fingers", "Cervical Spondylosis: neck pain, stiffness, and pain or tingling that spreads to the shoulders and arms", "Sciatica: back pain that travels down the leg, with numbness or weakness", "Other nerve-related pain and neurological disorders"],
+      vision: "Her belief: Healing is not just about relieving symptoms, but restoring the whole person."
     },
     {
       id: "musheera",
