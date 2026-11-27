@@ -155,3 +155,12 @@ h1{animation:rise 1s .25s both,blurin 1s .25s both}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-delay:0s!important}}
 
 .deliv{display:inline-block;margin:-6px auto 20px;padding:8px 16px;border-radius:99px;background:#ffffff1a;font-size:14px;color:#fff;animation:rise 1s .5s both}
+
+/* floating courier badge */
+.fbadge{position:fixed;left:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:11px;max-width:310px;padding:12px 12px 12px 14px;border-radius:18px;background:#fffdf7;color:var(--teal);box-shadow:0 14px 36px -12px #0006;font-size:13px;line-height:1.35;animation:badgein .8s 3s cubic-bezier(.2,.8,.2,1) both,floaty 5s 4s ease-in-out infinite}
+.fbadge svg{flex:none;color:var(--teal)}.fbadge b{display:block;font-size:14px}
+.fbadge button{border:0;background:none;font-size:20px;line-height:1;color:#173b3d99;cursor:pointer;padding:0 2px;align-self:flex-start}
+@keyframes badgein{from{opacity:0;transform:translateY(24px)}}
+@keyframes floaty{50%{transform:translateY(-6px)}}
+@media(max-width:600px){.fbadge{left:10px;bottom:10px;max-width:calc(100% - 100px);padding:9px 9px 9px 11px;font-size:12px}.fbadge b{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.fbadge{animation:none}}
