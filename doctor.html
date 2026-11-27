@@ -84,7 +84,7 @@
 </style>
 </head>
 <body>
-<header><div><b id="dn"></b><small>Doctor dashboard</small></div><div style="display:flex;gap:6px;align-items:center"><a class="hbtn" href="./" style="text-decoration:none">Home</a><span id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></span></div></header>
+<header><div style="display:flex;align-items:center;gap:11px;min-width:0"><img id="dp" alt="" hidden style="width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:center top;border:2px solid rgba(255,255,255,.7);flex:none;background:#fff"><div style="min-width:0"><b id="dn"></b><small>Doctor dashboard</small></div></div><div style="display:flex;gap:6px;align-items:center"><a class="hbtn" href="./" style="text-decoration:none">Home</a><span id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></span></div></header>
 <main id="main"></main>
 <dialog id="dlg"><h3>Decline this booking?</h3><p class="note">The patient gets an email that the booking was declined. If they already paid, refund them by UPI.</p><textarea id="reason">The doctor is not available at this time. Please book another slot.</textarea><div class="acts"><button class="btn ghost" id="dNo">Keep it</button><button class="btn no" id="dYes">Decline</button></div></dialog>
 <dialog id="mdlg"><h3 id="mTitle">Medicine amount</h3><p class="note" id="mSub"></p>
@@ -108,7 +108,7 @@ function applyMe() {
   const cfg = DOCS && me ? DOCS.find(d => d.id === me.id) : null;
   D.name = (cfg && cfg.name) || (me && me.name && DOCS ? me.name : S.doctor.name);
   D.photo = (cfg && cfg.photo) || S.doctor.photo;
-  $("dn").textContent = D.name; document.title = "Dashboard · " + D.name;
+  $("dn").textContent = D.name; const dp = $("dp"); if (D.photo) { dp.src = D.photo; dp.alt = D.name; dp.hidden = false; dp.onerror = () => { dp.hidden = true; }; } document.title = "Dashboard · " + D.name;
 }
 const API = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
 const $ = id => document.getElementById(id);
@@ -189,6 +189,7 @@ function render() {
   document.querySelectorAll("[data-no]").forEach(b => b.onclick = () => declineB(b.dataset.no));
   document.querySelectorAll("[data-call]").forEach(b => b.onclick = () => startCall(b));
   document.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => declineB(b.dataset.cx, true));
+  document.querySelectorAll("[data-rs]").forEach(b => b.onclick = () => reschedB(b.dataset.rs));
   document.querySelectorAll("[data-madd]").forEach(b => b.onclick = () => medDialog(b.dataset.madd));
   document.querySelectorAll("[data-mpaid]").forEach(b => b.onclick = () => medPaid(b));
   document.querySelectorAll("[data-mclr]").forEach(b => b.onclick = () => medClear(b));
@@ -213,8 +214,8 @@ function card(b) {
       ${other ? `<span>Note: ${esc(other)}</span>` : ""}
     </div>
     <div class="acts">${pend
-      ? `<button class="btn no" data-no="${esc(b.uid)}">Decline</button><button class="btn ok" data-ok="${esc(b.uid)}" data-name="${esc(b.name)}">Confirm</button>`
-      : `${ph ? `<a class="btn wa" href="https://wa.me/${ph}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Send link</a>` : ""}<button class="btn" data-call="1" data-uid="${esc(b.uid)}">Start call</button>${data.own ? `<button class="btn no" data-cx="${esc(b.uid)}">Cancel</button>` : ""}`}</div>
+      ? `<button class="btn no" data-no="${esc(b.uid)}">Decline</button>${data.own ? `<button class="btn no" data-rs="${esc(b.uid)}">Reschedule</button>` : ""}<button class="btn ok" data-ok="${esc(b.uid)}" data-name="${esc(b.name)}">Confirm</button>`
+      : `${ph ? `<a class="btn wa" href="https://wa.me/${ph}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Send link</a>` : ""}<button class="btn" data-call="1" data-uid="${esc(b.uid)}">Start call</button>${data.own ? `<button class="btn no" data-rs="${esc(b.uid)}">Reschedule</button><button class="btn no" data-cx="${esc(b.uid)}">Cancel</button>` : ""}`}</div>
   </div>`;
 }
 async function confirmB(btn) {
@@ -247,6 +248,29 @@ async function openRoom() {
   $("main").innerHTML = `<div class="empty">Opening the consultation room…</div>`;
   try { const d = await api("/host-token", { method: "POST" }); location.href = "consult.html" + (roomQ() ? roomQ() + "&" : "?") + "host=" + encodeURIComponent(d.token); }
   catch (e) { $("main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+/* reschedule: the doctor picks another free time; the patient is emailed the new time */
+async function reschedB(uid) {
+  const b = [...data.pending, ...data.upcoming].find(x => x.uid === uid); if (!b) return;
+  const dlg = document.createElement("dialog");
+  dlg.style.cssText = "border:0;border-radius:20px;padding:22px;max-width:440px;width:92%;font-family:inherit";
+  dlg.innerHTML = `<h3 style="margin:0 0 6px">Reschedule ${esc(b.name)}</h3><p class="note" style="margin:0 0 10px">Now: ${esc(day(b.start))}, ${esc(time(b.start))} IST. Choose a new day and time. The patient gets an email.</p><div id="rsBody" class="note">Loading free times…</div><p style="text-align:center;margin:12px 0 0"><button class="btn no" id="rsX" style="background:none;border:0;text-decoration:underline">Close</button></p>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  $("rsX").onclick = () => { dlg.close(); dlg.remove(); };
+  try {
+    const from = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    const res = await fetch(`${API}/book/slots?d=${encodeURIComponent((me && me.id) || "main")}&slug=${encodeURIComponent(b.slug)}&from=${from}&days=21&tz=${encodeURIComponent(TZ)}`);
+    const j = await res.json(); if (!res.ok) throw new Error(j.error || "Couldn't load times.");
+    const days = Object.keys(j.slots || {}).sort();
+    if (!days.length) { $("rsBody").textContent = "No free times in the next 3 weeks."; return; }
+    const fmtD = k => new Date(k + "T12:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+    $("rsBody").innerHTML = `<select id="rsDay" style="width:100%;padding:11px;border-radius:12px;border:1px solid #ccc;font:inherit">${days.map(k => `<option value="${k}">${fmtD(k)}</option>`).join("")}</select><div id="rsTimes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div><p class="err" id="rsE"></p>`;
+    const paint = () => { $("rsTimes").innerHTML = j.slots[$("rsDay").value].map(t => `<button class="btn no" data-t="${esc(t)}">${esc(time(t))}</button>`).join(""); $("rsTimes").querySelectorAll("[data-t]").forEach(x => x.onclick = async () => {
+      x.disabled = true;
+      try { await api("/reschedule-booking", { method: "POST", body: JSON.stringify({ uid, start: x.dataset.t }) }); dlg.close(); dlg.remove(); toast("Time changed. The patient gets an email."); await load(); }
+      catch (e) { $("rsE").textContent = e.message; x.disabled = false; } }); };
+    $("rsDay").onchange = paint; paint();
+  } catch (e) { $("rsBody").textContent = e.message; }
 }
 /* instant call: make a private room now, send its link to the patient, and join it */
 async function instantCall() {

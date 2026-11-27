@@ -255,9 +255,10 @@ export class Calendar {
         this.sql.exec(`UPDATE bookings SET status = 'confirmed', updated = ? WHERE id = ?`, Date.now(), b.id);
         return { ok: true, ...(await this.view({ ...b, status: "confirmed" })) };
       }
-      case "reschedule": {
+      case "reschedule": case "dreschedule": {
         const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
-        if (!this.canChange(b)) throw bad(409, "This booking can no longer be changed online. Please contact the clinic.");
+        if (a.op === "dreschedule" && !["pending", "confirmed"].includes(b.status)) throw bad(409, "This booking is already " + b.status + ".");
+        if (a.op === "reschedule" && !this.canChange(b)) throw bad(409, "This booking can no longer be changed online. Please contact the clinic.");
         const t = this.typeOf(s, b.slug) || { length: Math.round((b.end - b.start) / 6e4), confirm: true };
         const start = Date.parse(a.start);
         if (!this.freeSlots(s, t, start - 1, start + 1, b.id).includes(start)) throw bad(409, "Sorry, that time was just taken. Please choose another time.");

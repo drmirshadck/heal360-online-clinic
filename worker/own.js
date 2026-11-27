@@ -14,7 +14,7 @@ import { manageToken } from "./mail.js";
 export { manageToken };
 
 const BOOK = ["/book/info", "/book/fee", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule", "/book/med-ref"];
-const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear", "/follow"];
+const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/reschedule-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear", "/follow"];
 export const isOwnPublic = p => BOOK.includes(p);
 export const isOwnDoctor = p => DOCTOR.includes(p);
 
@@ -87,6 +87,13 @@ export async function ownDoctor(req, env, url, p, doc, hooks = {}) {
     return ok(r);
   }
   if (p === "/confirm" && M === "POST") { const { uid } = await body(req); const v = await call(env, doc, { op: "confirm", id: uid }); if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: await manageToken(env, doc.id, v.uid) }, "confirmed")); return ok({ ok: true }); }
+  if (p === "/reschedule-booking" && M === "POST") {   // the doctor moves a booking to another free time; the patient gets an email with the new time
+    const { uid, start } = await body(req);
+    if (isNaN(Date.parse(start))) throw bad(400, "Please choose a time.");
+    const v = await call(env, doc, { op: "dreschedule", id: uid, start: new Date(start).toISOString() });
+    if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: await manageToken(env, doc.id, v.uid) }, "time changed by doctor"));
+    return ok({ ok: true, start: v.start });
+  }
   if (p === "/decline" && M === "POST") { const { uid, reason } = await body(req); const v = await call(env, doc, { op: "decline", id: uid }); if (hooks.onChange) await later(hooks, () => hooks.onChange(doc, { ...v, reason: String(reason || "").slice(0, 300) }, "declined")); return ok({ ok: true }); }
   if (p === "/cancel-booking" && M === "POST") { const { uid, reason } = await body(req); const v = await call(env, doc, { op: "dcancel", id: uid }); if (hooks.onChange) await later(hooks, () => hooks.onChange(doc, { ...v, reason: String(reason || "").slice(0, 300) }, "cancelled by doctor")); return ok({ ok: true }); }
   if (p === "/med" && M === "POST") {

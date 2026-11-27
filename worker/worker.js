@@ -169,6 +169,7 @@ function hooks(env, ctx) {
       if (what === "declined") { await mail(doc, b, "declined"); return wa(doc, b, "cancelled"); }
       if (what === "cancelled by doctor") { await mail(doc, b, "cancelledByDoctor"); return wa(doc, b, "cancelled"); }
       if (what === "cancelled by patient") { await alert(doc, "cancelled"); await mail(doc, b, "cancelledByPatient"); return wa(doc, b, "d_cancelled"); }
+      if (what === "time changed by doctor") { await emailPatient(env, doc, b, "rescheduled", many).catch(log("rescheduled")); return; }   // the patient gets the new time by email
       if (what === "time changed by patient") { await alert(doc, "rescheduled"); await mail(doc, b, "rescheduled"); return wa(doc, b, "d_rescheduled"); }
     }
   };
