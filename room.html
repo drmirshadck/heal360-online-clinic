@@ -292,7 +292,17 @@ async function askRoom(extra, path) {
 
 async function open() {
   if (!API) return msg("Room not available", "This website's consultation room is not set up yet.", `<a class="btn" href="${home}">Back</a>`);
-  if ((!A.b && !A.i) || (!host && !A.t)) return msg("Please use your consultation link", "Open the <b>Consultation room</b> link from your booking email, or the <b>Change or cancel</b> page.", `<a class="btn" href="./">Back to website</a>`);
+  if ((!A.b && !A.i) || (!host && !A.t)) {
+    // opened from the menu with no link: ask who is joining
+    msg("Consultation room", "Who is joining?", `<button class="btn" id="whoP">I'm a patient</button><a class="btn line" href="doctor.html?next=room">I'm a doctor</a>`, "info");
+    $("whoP").onclick = () => {
+      $("msg").querySelector("p").innerHTML = `Paste the consultation link from your booking email.<br><input id="whoL" type="text" placeholder="https://…/room.html?…" style="width:100%;margin-top:12px;padding:13px 16px;border-radius:99px;border:1px solid var(--line);font:inherit"><span id="whoE" style="display:block;color:#b3261e;font-size:.85rem;margin-top:8px"></span><small style="display:block;margin-top:8px;opacity:.7">The room opens 15 minutes before your time.</small>`;
+      $("msg").querySelector(".btns").innerHTML = `<button class="btn" id="whoG">Join</button><a class="btn line" href="./">Back to website</a>`;
+      $("whoL").focus();
+      $("whoG").onclick = () => { const m = $("whoL").value.match(/room\.html\?([^\s#]+)/); if (!m) { $("whoE").textContent = "That doesn't look like a consultation link. Please paste the whole link from your email."; return; } location.href = "room.html?" + m[1]; };
+    };
+    return;
+  }
   if (host && !hostToken) return msg("Please log in", "Open the room from your dashboard (Start call).", `<a class="btn" href="doctor.html">Open dashboard</a>`);
   let r, j;
   try { [r, j] = await askRoom(); }
