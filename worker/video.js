@@ -24,6 +24,7 @@
  *          GET  /video/ws?ticket=...      (WebSocket, the two sides exchange connection messages)
  */
 import { call, manageToken } from "./own.js";
+import { engineList, agoraRoom, fishjamRoom } from "./video-engines.js";
 
 const enc = new TextEncoder();
 const MIN = 60e3;
@@ -49,13 +50,22 @@ export async function videoRoute(req, env, url, p, opts) {
     if (env.PUSH) await env.PUSH.put(ckey, consentAt, { expirationTtl: (Number(env.RETAIN_DAYS) || 365) * 86400 });
   }
 
-  if (p === "/video/backup") return json(await dailyRoom(env, opts, doc, uid, role, info.me, closes));
+  if (p === "/video/backup") {
+    // the video chain: a = {engine: "daily" | "agora" | "fishjam"}; the default stays Daily (older pages)
+    const eng = String(a.engine || "daily");
+    if (!engineList(env).includes(eng)) throw err(400, "That video service is not available.");
+    if (eng === "agora") return json(await agoraRoom(env, opts, doc, uid, role, closes, hashHex));
+    if (eng === "fishjam") return json(await fishjamRoom(env, opts, doc, uid, role, env.ROOMS.get(env.ROOMS.idFromName(doc.id + ":" + uid))));
+    return json({ ...(await dailyRoom(env, opts, doc, uid, role, info.me, closes)), engine: "daily" });
+  }
 
   const exp = Math.min(closes, Date.now() + 4 * 3600e3);
   const ticket = await sign(env, [doc.id, uid, role, exp].join("|"));
   if (role === "patient" && opts.onWaiting) { try { await opts.onWaiting(doc, b); } catch (e) {} }
-  const dailyOnly = String(env.VIDEO_ENGINE || "").toLowerCase() === "daily" && !!env.DAILY_BACKUP_KEY;   // Daily is the main video; our own direct room is the backup (Backup video button)
-  return json({ ...info, ticket, iceServers: await iceServers(env), consentAt: consentAt || null, backup: !!env.DAILY_BACKUP_KEY, dailyOnly });
+  // the video chain, in order (Daily → Agora → Fishjam → our own direct room); the page moves down the list when one fails
+  const engines = String(env.VIDEO_ENGINE || "").toLowerCase() === "daily" ? engineList(env) : ["own", ...engineList(env).filter(x => x !== "own")];
+  const dailyOnly = engines[0] !== "own";
+  return json({ ...info, ticket, iceServers: await iceServers(env), consentAt: consentAt || null, backup: engines.length > 1, dailyOnly, engines });
 }
 
 /* who is joining, and is the room open for them */
@@ -132,6 +142,12 @@ async function wsRoute(req, env, url, opts) {
 export class Room {
   constructor(state) { this.state = state; }
   async fetch(req) {
+    // remembers the Fishjam room id for this booking (first writer wins), so both sides join the same room
+    if (new URL(req.url).pathname === "/fj") {
+      let id = (await this.state.storage.get("fj")) || "";
+      if (!id && req.method === "POST") { id = (await req.text()).slice(0, 120); await this.state.storage.put("fj", id); }
+      return new Response(JSON.stringify({ id }), { headers: { "content-type": "application/json" } });
+    }
     const role = new URL(req.url).searchParams.get("role") === "doctor" ? "doctor" : "patient";
     const [client, server] = Object.values(new WebSocketPair());
     for (const old of this.state.getWebSockets(role)) { try { old.close(4000, "Opened on another screen"); } catch (e) {} }

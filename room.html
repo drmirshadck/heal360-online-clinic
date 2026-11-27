@@ -204,7 +204,8 @@
           <button class="cb" id="mic" aria-label="Microphone"></button>
           <button class="cb" id="cam" aria-label="Camera"></button>
           <button class="cb" id="flip" aria-label="Switch camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9 13.5a3 3 0 0 0 5.6 1.5M15 12.5A3 3 0 0 0 9.4 11"/></svg><span class="t">Switch</span></button>
-          <button class="cb hide" id="backup" aria-label="Backup video" title="Use backup video if this call isn't working"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></svg><span class="t">Backup video</span></button>
+          <button class="cb hide" id="refresh" aria-label="Refresh video" title="Reconnect the video if you can't see or hear each other"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></svg><span class="t">Refresh</span></button>
+          <button class="cb hide" id="backup" aria-label="Switch video" title="Move both of you to the next video service"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg><span class="t">Switch video</span></button>
           <button class="cb" id="full" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t">Full screen</span></button>
           <button class="cb end" id="end" aria-label="Leave"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-3.2 0-6.2.9-8.6 2.6-.5.4-.6 1.1-.3 1.6l1.6 2.3c.4.5 1.1.7 1.6.4l2.3-1.2c.4-.2.7-.7.7-1.2v-1.6c1.8-.5 3.6-.5 5.4 0v1.6c0 .5.3 1 .7 1.2l2.3 1.2c.5.3 1.2.1 1.6-.4l1.6-2.3c.3-.5.2-1.2-.3-1.6C18.2 9.9 15.2 9 12 9z"/></svg><span class="t">Leave</span></button>
         </div>
@@ -269,7 +270,9 @@ $("foot").innerHTML = `Online consultations are not for emergencies. In an emerg
 let J = null, ws = null, pc = null, local = null, polite = true, makingOffer = false, ignoreOffer = false;
 let wsTries = 0, ended = false, inCall = false, connectedAt = 0, tick = null, facing = "user", pending = [];
 let meterStop = null;
-let mode = "own", daily = null, backupOffer = null;   // mode: "own" (our room) or "daily" (backup video)
+let daily = null, ag = null, fj = null, dailyStream = null;                 // the live video engines (only one at a time)
+let engines = ["own"], idx = 0, run = 0, peerHere = false, remoteShown = false, stuckTimer = null;   // the video chain: Daily → Agora → Fishjam → our own room
+const cur = () => engines[idx], sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* screens */
 function screen(id) { ["msg", "lobby", "call"].forEach(x => $(x).classList.toggle("hide", x !== id)); }
@@ -278,7 +281,7 @@ function msg(title, text, btns, kind) {
   const top = kind === "wait" ? '<div class="pulse"></div>' : `<div class="icon">${ICON[kind || "info"] || ICON.info}</div>`;
   $("msg").innerHTML = `<div class="inner">${top}<h1>${esc(title)}</h1><p>${text || ""}</p>${btns ? `<div class="btns">${btns}</div>` : ""}</div>`;
 }
-function over(title, text, extra) { $("center").classList.remove("hide"); $("center").innerHTML = `<div><div class="pulse"></div><h1>${esc(title)}</h1><p>${text || ""}</p>${extra || ""}</div>`; const b = $("tryBackup"); if (b) b.onclick = () => J.dailyOnly ? switchToOwn(false) : startBackup(false); }
+function over(title, text, extra) { $("center").classList.remove("hide"); $("center").innerHTML = `<div><div class="pulse"></div><h1>${esc(title)}</h1><p>${text || ""}</p>${extra || ""}</div>`; const r = $("tryRefresh"), n = $("trySwitch"); if (r) r.onclick = () => refresh(false); if (n) n.onclick = () => nextEngine(false); }
 const hideOver = () => $("center").classList.add("hide");
 const when = iso => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
@@ -403,25 +406,26 @@ async function enter() {
   $("who").textContent = J.role === "patient" ? (DOC.name || J.other) : J.other;
   $("sub").textContent = J.role === "patient" ? (DOC.qual || J.title || "") : (J.title || "Patient");
   $("local").srcObject = local; paintMedia();
-  $("backup").classList.toggle("hide", !J.backup);
-  if (J.dailyOnly) { waiting(); connect(); startBackup(true); return; }   // this clinic uses one video service only: go straight in
-  waiting();
-  connect();
+  engines = J.engines && J.engines.length ? J.engines : ["own"]; idx = 0;
+  waiting(); connect(); startEngine(0, true);
 }
 
 function waiting() {
   const other = J.role === "doctor" ? "your patient" : esc(DOC.name || J.other);
-  if (mode === "daily") over(J.dailyOnly ? "Video consultation" : "Backup video", `Waiting for ${other} to join…`);
-  else over(J.role === "doctor" ? "Waiting for your patient" : "Waiting for the doctor",
+  over(J.role === "doctor" ? "Waiting for your patient" : "Waiting for the doctor",
     J.role === "doctor" ? "Your patient will appear here as soon as they join." : `${other} will join you here at your appointment time. Please stay on this page.`);
-  $("dot").classList.remove("on"); $("state").textContent = mode === "daily" ? (J.dailyOnly ? "Waiting" : "Backup video") : "Waiting";
-  // still not connected after 45 seconds: offer the backup video
-  clearTimeout(backupOffer);
-  if (J.backup && !J.dailyOnly && mode === "own") backupOffer = setTimeout(() => {
-    if (mode !== "own" || (pc && pc.connectionState === "connected")) return;
-    over("Video not connecting?", J.role === "doctor" ? "If your patient is here but you can't see each other, switch to the backup video." : "If the doctor is here but you can't see each other, switch to the backup video. You'll both move over together.",
-      `<button class="btn" id="tryBackup">Try backup video</button>`);
-  }, 45000);
+  $("dot").classList.remove("on"); $("state").textContent = "Waiting";
+  armStuck(run);
+}
+/* both here but no picture after 25 seconds: offer Refresh and Switch video (to the next service) */
+function armStuck(my) {
+  clearTimeout(stuckTimer);
+  stuckTimer = setTimeout(() => {
+    if (my !== run || ended || remoteShown) return;
+    if (peerHere) over("Video not connecting?", "If you can't see each other, tap Refresh. Still stuck? Switch video - you'll both move over together.",
+      `<button class="btn" id="tryRefresh">Refresh</button>` + (idx + 1 < engines.length ? ` <button class="btn" id="trySwitch">Switch video</button>` : ""));
+    armStuck(my);
+  }, 25000);
 }
 
 /* signalling: the website's helper passes messages between the two sides */
@@ -457,19 +461,19 @@ function newPC() {
   pc.onconnectionstatechange = () => {
     const s = pc.connectionState;
     if (s === "connected") {
-      clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = "Connected"; $("net").classList.add("hide");
-      if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
+      remoteShown = true; clearTimeout(stuckTimer); hideOver(); $("dot").classList.add("on"); $("state").textContent = "Connected"; $("net").classList.add("hide"); startTimer();
     } else if (s === "disconnected") { $("net").classList.remove("hide"); $("state").textContent = "Reconnecting…"; }
     else if (s === "failed") { if (!polite) { try { pc.restartIce(); } catch (e) {} } }
   };
 }
 
 async function onMsg(m) {
-  if (mode === "daily") {
-    if (J.dailyOnly) { if (m.type === "backup") switchToOwn(true); return; }   // either side tapped Backup video: both move to our own direct room
-    if (m.type === "peer-joined") send({ type: "backup" }); return;
-  }   // the other side reloaded: bring them to the backup too
-  if (m.type === "backup") { if (!J.dailyOnly) startBackup(true); return; }
+  if (m.type === "welcome") peerHere = !!(m.peers && m.peers.length);
+  if (m.type === "peer-joined") { peerHere = true; if (idx > 0) send({ type: "engine", i: idx }); }   // a side that reloaded joins the service we are on
+  if (m.type === "peer-left" || m.type === "bye") peerHere = false;
+  if (m.type === "engine") { if (m.i > idx && m.i < engines.length) startEngine(m.i, true); return; }   // the other side moved to the next video service
+  if (m.type === "refresh") { startEngine(idx, true); return; }                                          // the other side tapped Refresh
+  if (cur() !== "own") return;
   if (m.type === "welcome") { if (m.peers && m.peers.length) newPC(); return; }
   if (m.type === "peer-joined") { newPC(); return; }
   if (m.type === "peer-left" || m.type === "bye") { if (pc) { try { pc.close(); } catch (e) {} pc = null; } $("remote").srcObject = null; waiting(); return; }
@@ -487,65 +491,135 @@ async function onMsg(m) {
   }
 }
 
-/* BACKUP VIDEO (Daily, through the clinic's helper): our own design stays; only the video engine changes */
-const DAILY_JS = "https://unpkg.com/@daily-co/daily-js";   // same script the old consult page used
-function loadDaily() {
-  if (window.Daily) return Promise.resolve();
+/* THE VIDEO CHAIN: Daily (main) → Agora → Fishjam → our own direct room.
+   Our own design stays on screen; only the video engine underneath changes. If one can't start (or its free minutes
+   are finished), both sides move to the next by themselves. Refresh rejoins the same one; Switch video moves on. */
+function loadScript(src, ready) {
+  if (ready()) return Promise.resolve();
   return new Promise((ok, bad) => {
-    const fail = () => bad(new Error("Backup video couldn't load. Check your internet and try again."));
-    const s = document.createElement("script"); s.src = DAILY_JS; s.crossOrigin = "anonymous";
-    s.onload = () => window.Daily ? ok() : fail(); s.onerror = fail; document.head.appendChild(s);
-    setTimeout(() => { if (!window.Daily) fail(); }, 15000);
+    const fail = () => bad(new Error("couldn't load"));
+    const el = document.createElement("script"); el.src = src; el.crossOrigin = "anonymous";
+    el.onload = () => ready() ? ok() : fail(); el.onerror = fail; document.head.appendChild(el);
+    setTimeout(() => { if (!ready()) fail(); }, 15000);
   });
 }
-async function startBackup(fromOther) {
-  if (mode === "daily" || ended) return;
-  mode = "daily"; clearTimeout(backupOffer);
-  if (!fromOther) send({ type: "backup" });                 // the other side moves over with us
+function startTimer() {
+  if (connectedAt) return;
+  connectedAt = Date.now();
+  tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000);
+}
+function onRemote(stream) {
+  clearTimeout(stuckTimer); remoteShown = true; $("remote").srcObject = stream; hideOver();
+  $("dot").classList.add("on"); $("state").textContent = "Connected"; $("net").classList.add("hide"); startTimer();
+}
+function onNoRemote() { if (!remoteShown) return; remoteShown = false; $("remote").srcObject = null; waiting(); }
+let lastIds = "";
+function paintTracks(tracks) {
+  tracks = tracks.filter(Boolean);
+  if (!tracks.length) { lastIds = ""; return onNoRemote(); }
+  const ids = tracks.map(t => t.id).join(",");
+  if (ids !== lastIds || !remoteShown) { lastIds = ids; onRemote(new MediaStream(tracks)); }
+}
+function buttons() {
+  $("backup").classList.toggle("hide", !(idx + 1 < engines.length));
+  $("refresh").classList.remove("hide");
+}
+async function stopEngine() {
+  clearTimeout(stuckTimer); remoteShown = false; lastIds = ""; dailyStream = null;
+  const d = daily, a = ag, f = fj; daily = ag = fj = null;
+  if (d) { try { await d.leave(); } catch (e) {} try { d.destroy(); } catch (e) {} }
+  if (a) { try { a.client.removeAllListeners(); } catch (e) {} try { await a.client.leave(); } catch (e) {} [a.a, a.v].forEach(t => { try { t && t.close(); } catch (e) {} }); }
+  if (f) { try { f.client.disconnect(); } catch (e) {} }
   if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-  $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = J.dailyOnly ? "Joining" : "Backup video"; if (!J.dailyOnly) $("backup").classList.add("hide");
-  over(J.dailyOnly ? "Joining…" : "Switching to backup video…", "This takes a few seconds. Please stay on this page.");
+}
+async function startEngine(i, fromOther) {
+  if (ended) return;
+  const my = ++run; idx = i;
+  if (!fromOther) send({ type: "engine", i });
+  await stopEngine();
+  if (my !== run || ended) return;
+  $("remote").srcObject = null; $("dot").classList.remove("on"); $("state").textContent = "Joining"; buttons();
+  over(i === 0 ? "Joining…" : "Switching video…", "This takes a few seconds. Please stay on this page.");
+  const name = cur();
   try {
-    const [r, j] = await askRoom({}, "/video/backup");
-    if (!r.ok || !j.ok) throw new Error(j.error || "Backup video couldn't start.");
-    await loadDaily();
+    if (name === "own") {
+      if (i > 0 || peerHere) await sleep(polite ? 0 : 1500);   // the doctor's side calls second, so the patient is ready to answer
+      if (my !== run || ended) return;
+      if (i > 0 || peerHere) newPC();                         // at the very start the welcome message from the helper does this
+      waiting(); return;
+    }
+    const [r, j] = await askRoom({ engine: name }, "/video/backup");
+    if (!r.ok || !j.ok) throw new Error(j.error || "couldn't start");
+    if (my !== run || ended) return;
+    await ENGINE[name](j, my);
+  } catch (e) { console.warn(name, e); failed(my); }
+}
+function failed(my) {
+  if (my !== run || ended) return;
+  if (idx + 1 < engines.length) return startEngine(idx + 1, false);
+  over("Video couldn't connect", "Please check your internet connection and tap Refresh.",
+    `<button class="btn" id="tryRefresh">Refresh</button>` + (WA && !host ? `<span class="alt">or <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a></span>` : ""));
+}
+const nextEngine = fromOther => { if (idx + 1 < engines.length) startEngine(idx + 1, fromOther); };
+function refresh(fromOther) { if (!fromOther) send({ type: "refresh" }); startEngine(idx, true); }
+$("backup").onclick = () => nextEngine(false);
+$("refresh").onclick = () => refresh(false);
+
+const ENGINE = {
+  /* 1. Daily */
+  async daily(j, my) {
+    await loadScript("https://unpkg.com/@daily-co/daily-js", () => window.Daily);
     const a = local && local.getAudioTracks()[0], v = local && local.getVideoTracks()[0];
-    daily = window.Daily.createCallObject({ audioSource: a || false, videoSource: v || false, subscribeToTracksAutomatically: true });
-    ["participant-joined", "participant-updated", "participant-left", "track-started", "track-stopped"].forEach(ev => daily.on(ev, paintDaily));
-    daily.on("network-connection", e => $("net").classList.toggle("hide", !(e && e.event === "interrupted")));
-    daily.on("error", e => over("Backup video stopped", esc((e && e.errorMsg) || "Please rejoin."), `<button class="btn" onclick="location.reload()">Rejoin</button>`));
-    await daily.join({ url: j.url, token: j.token });
-    paintDaily();
-  } catch (e) {
-    mode = "own"; if (daily) { try { daily.destroy(); } catch (x) {} daily = null; }
-    if (J.dailyOnly) { mode = "daily"; switchToOwn(false); return; }   // main video couldn't start: use our own direct room
-    $("backup").classList.toggle("hide", !J.backup);
-    over("Backup video couldn't start", esc(e.message || "Please try again."), `<button class="btn" id="tryBackup">Try again</button>` + (WA && !host ? `<span class="alt">or <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a></span>` : ""));
+    const d = window.Daily.createCallObject({ audioSource: a || false, videoSource: v || false, subscribeToTracksAutomatically: true });
+    daily = d;
+    const paint = () => {
+      const p = Object.values(d.participants()).find(x => !x.local);
+      if (!p) return onNoRemote();
+      paintTracks(["video", "audio"].map(k => p.tracks && p.tracks[k] && p.tracks[k].state === "playable" && p.tracks[k].persistentTrack));
+    };
+    ["participant-joined", "participant-updated", "participant-left", "track-started", "track-stopped"].forEach(ev => d.on(ev, paint));
+    d.on("network-connection", e => $("net").classList.toggle("hide", !(e && e.event === "interrupted")));
+    d.on("error", () => failed(my));
+    await d.join({ url: j.url, token: j.token });
+    if (my === run) waiting();
+  },
+  /* 2. Agora */
+  async agora(j, my) {
+    await loadScript("https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.10/AgoraRTC_N-production.js", () => window.AgoraRTC);
+    const AR = window.AgoraRTC; try { AR.setLogLevel(3); } catch (e) {}
+    const client = AR.createClient({ mode: "rtc", codec: "vp8" }), st = { client, a: null, v: null }, users = new Map();
+    ag = st;
+    const paint = () => { const t = []; users.forEach(u => { if (u.audioTrack) t.push(u.audioTrack.getMediaStreamTrack()); if (u.videoTrack) t.push(u.videoTrack.getMediaStreamTrack()); }); paintTracks(t); };
+    client.on("user-published", async (u, type) => { try { await client.subscribe(u, type); users.set(u.uid, u); paint(); } catch (e) { console.warn(e); } });
+    client.on("user-unpublished", u => { users.set(u.uid, u); paint(); });
+    client.on("user-left", u => { users.delete(u.uid); paint(); });
+    client.on("connection-state-change", (c, prev, reason) => {
+      $("net").classList.toggle("hide", c !== "RECONNECTING");
+      if (c === "DISCONNECTED" && reason !== "LEAVE") failed(my);
+    });
+    await client.join(j.appId, j.channel, j.token, j.uid);
+    const a = local && local.getAudioTracks()[0], v = local && local.getVideoTracks()[0];
+    st.a = a ? AR.createCustomAudioTrack({ mediaStreamTrack: a }) : null;
+    st.v = v ? AR.createCustomVideoTrack({ mediaStreamTrack: v }) : null;
+    await client.publish([st.a, st.v].filter(Boolean));
+    if (my === run) waiting();
+  },
+  /* 3. Fishjam */
+  async fishjam(j, my) {
+    const { FishjamClient } = await import("https://esm.sh/@fishjam-cloud/ts-client");
+    const client = new FishjamClient({ reconnect: true }), tracks = new Map();
+    fj = { client };
+    const paint = () => paintTracks([...tracks.values()]);
+    client.on("trackReady", c => { if (c && c.track) { tracks.set(c.trackId, c.track); paint(); } });
+    client.on("trackRemoved", c => { tracks.delete(c.trackId); paint(); });
+    ["authError", "joinError", "connectionError", "socketError"].forEach(ev => client.on(ev, () => failed(my)));
+    await client.connect({ url: "wss://fishjam.io/api/v1/connect/" + j.id, token: j.token, peerMetadata: { name: (J && J.me) || "" } });
+    const a = local && local.getAudioTracks()[0], v = local && local.getVideoTracks()[0];
+    if (v) await client.addTrack(v, { type: "camera", paused: false });
+    if (a) await client.addTrack(a, { type: "microphone", paused: false });
+    if (my === run) waiting();
   }
-}
-let dailyStream = null;
-function paintDaily() {
-  if (!daily) return;
-  const p = Object.values(daily.participants()).find(x => !x.local);
-  if (!p) { dailyStream = null; $("remote").srcObject = null; waiting(); return; }
-  const tr = ["video", "audio"].map(k => p.tracks && p.tracks[k] && p.tracks[k].state === "playable" && p.tracks[k].persistentTrack).filter(Boolean);
-  const ids = tr.map(t => t.id).join(",");
-  if (!dailyStream || dailyStream._ids !== ids) { dailyStream = new MediaStream(tr); dailyStream._ids = ids; $("remote").srcObject = dailyStream; }
-  clearTimeout(backupOffer); hideOver(); $("dot").classList.add("on"); $("state").textContent = J.dailyOnly ? "Connected" : "Connected · backup";
-  if (!connectedAt) { connectedAt = Date.now(); tick = setInterval(() => { const m = Math.floor((Date.now() - connectedAt) / 1000); $("timer").textContent = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }, 1000); }
-}
-$("backup").onclick = () => { if (J.dailyOnly) { if (mode === "daily") switchToOwn(false); } else if (confirmBackup()) startBackup(false); };
-/* Daily is the main video; this moves both sides to our own direct room (the backup) */
-function switchToOwn(fromOther) {
-  if (mode === "own" || ended) return;
-  mode = "own"; if (!fromOther) send({ type: "backup" });
-  if (daily) { try { daily.leave().catch(() => {}).finally(() => { try { daily.destroy(); } catch (e) {} }); } catch (e) {} daily = null; }
-  dailyStream = null; $("remote").srcObject = null; $("dot").classList.remove("on"); $("backup").classList.add("hide");
-  over("Switching to backup video…", "This takes a few seconds. Please stay on this page.");
-  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-  setTimeout(() => { if (ended || mode !== "own") return; newPC(); waiting(); }, polite ? 0 : 1500);   // the doctor's side calls second, so the patient is ready to answer
-}
-const confirmBackup = () => mode === "own";
+};
 
 /* buttons */
 $("flip").onclick = async () => {
@@ -556,6 +630,7 @@ $("flip").onclick = async () => {
     const nt = s.getVideoTracks()[0]; nt.enabled = old.enabled;
     if (pc) { const sender = pc.getSenders().find(x => x.track && x.track.kind === "video"); if (sender) await sender.replaceTrack(nt); }
     if (daily) await daily.setInputDevicesAsync({ videoSource: nt });
+    if (ag && ag.v) { try { await ag.v.replaceTrack(nt, false); } catch (e) {} }
     local.removeTrack(old); old.stop(); local.addTrack(nt);
     $("local").srcObject = local; $("local").classList.toggle("back", facing === "environment");
   } catch (e) { facing = facing === "user" ? "environment" : "user"; }
@@ -582,9 +657,7 @@ $("end").onclick = () => {
 function cleanup() {
   clearInterval(tick); inCall = false; setFull(false);
   if (meterStop) meterStop();
-  clearTimeout(backupOffer);
-  if (daily) { try { daily.leave().catch(() => {}).finally(() => { try { daily.destroy(); } catch (e) {} daily = null; }); } catch (e) {} }
-  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  clearTimeout(stuckTimer); run++; stopEngine();
   if (ws) { try { ws.close(); } catch (e) {} }
   if (local) local.getTracks().forEach(t => t.stop());
   $("remote").srcObject = null; $("net").classList.add("hide");
