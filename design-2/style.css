@@ -109,3 +109,12 @@ h1{font-size:clamp(34px,4.6vw,64px);margin-bottom:16px}
 .trio{max-width:1060px}
 .wa{transition:opacity .3s}.wa.hide{opacity:0;pointer-events:none}
 @media(max-width:860px){.cta .ghost{display:none}.lead{margin-bottom:18px}h1{font-size:34px}.hero-text .badge{font-size:12px}}
+/* same height for every doctor */
+.trio{display:flex;justify-content:center;align-items:flex-end;gap:0;grid-template-columns:none;max-width:none}
+.fig{flex:0 0 auto}
+.fig img{height:min(58svh,36vw);width:auto;max-width:none}
+.fig+.fig{margin-left:-2vw}
+.dpic{height:400px;display:flex;align-items:flex-end;justify-content:center;padding-top:26px}
+.dpic img{height:100%;width:auto;max-width:92%;object-fit:contain;object-position:bottom;margin:0}
+@media(max-width:860px){.fig img{height:50vw}.fig+.fig{margin-left:-8vw}.dpic{height:360px}.dpic img{width:auto}}
+@media(max-width:860px){.chip{width:92%}.chip b{font-size:10px;white-space:normal}}
