@@ -105,11 +105,6 @@
   .badge small{display:block;font-size:.76rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mark{position:absolute;right:14px;top:14px;z-index:4;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .8rem var(--display);max-width:40%}
   .mark span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .wm{position:absolute;inset:0;z-index:2;pointer-events:none;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;text-shadow:0 1px 6px #0009;padding:0 12px}
-  .wm .w{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;width:clamp(86px,17%,170px);opacity:.28}
-  .wm img{width:clamp(38px,6vw,64px);height:auto;filter:drop-shadow(0 1px 6px #0009)}
-  .wm b{font:700 clamp(.7rem,1.6vw,.95rem) var(--display);letter-spacing:.05em;text-transform:uppercase}
-  .wm small{font:600 clamp(.62rem,1.4vw,.82rem) var(--display);letter-spacing:.04em}
   .private{position:absolute;left:14px;bottom:14px;z-index:4;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:#0000006b;backdrop-filter:blur(8px);color:#fff;font:600 .72rem var(--display)}
   .private svg{width:13px;height:13px}
   .net{position:absolute;top:0;left:0;right:0;z-index:6;background:#e8a33d;color:#1d1d1d;text-align:center;font:700 .85rem var(--display);padding:7px}
@@ -199,7 +194,6 @@
         <video id="local" autoplay playsinline muted></video>
         <div class="badge"><b id="who">Consultation</b><small id="sub"></small></div>
         <div class="mark" id="mark"></div>
-        <div class="wm" id="wm"></div>
         <span class="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private · not recorded</span>
         <div class="net hide" id="net">Connection lost. Reconnecting…</div>
         <div class="over" id="center"><div><div class="pulse"></div><h1>Connecting…</h1><p></p></div></div>
@@ -270,8 +264,6 @@ $("brand").innerHTML = `${LOGO}<span><b>${esc(B.title || CLINIC)}</b><small>Cons
 $("brand").href = home;
 $("back").href = home; $("back").textContent = host ? "Dashboard" : "Back to website";
 $("mark").innerHTML = `${LOGO}<span>${esc(CLINIC)}</span>`;
-function paintWm(n){ const one = `<div class="w"><img src="logo-real/mark-256.png" alt=""><b>${esc(CLINIC)}</b>${n ? `<small>${esc(n)}</small>` : ""}</div>`; $("wm").innerHTML = one + one; }
-paintWm(DOC.name);
 $("foot").innerHTML = `Online consultations are not for emergencies. In an emergency, call <b>112</b> (India) or your local emergency number, or go to the nearest hospital.` +
   (WA && !host ? `<br>Trouble joining? <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the clinic</a>` : "");
 
@@ -422,7 +414,6 @@ async function enter() {
   if (meterStop) meterStop();
   inCall = true; screen("call");
   $("who").textContent = J.role === "patient" ? (DOC.name || J.other) : J.other;
-  paintWm(J.role === "patient" ? (DOC.name || J.other) : (DOC.name || ""));
   $("sub").textContent = J.role === "patient" ? (DOC.qual || J.title || "") : (J.title || "Patient");
   $("local").srcObject = local; paintMedia();
   engines = J.engines && J.engines.length ? J.engines : ["own"]; idx = 0;
