@@ -175,7 +175,7 @@ function render() {
   const nowMs = Date.now();
   const joinable = data.own ? data.upcoming.find(b => nowMs >= Date.parse(b.start) - 60 * 60e3 && nowMs <= Date.parse(b.end || b.start) + 180 * 60e3) : null;
   const joinBox = joinable ? `<div class="notify" style="background:var(--brand);color:#fff"><span><b>${esc(joinable.name)}</b> · ${esc(typeName(joinable.title))} · ${esc(time(joinable.start))}</span><button class="btn" style="background:#fff;color:var(--deep)" data-call="1" data-uid="${esc(joinable.uid)}">Join call</button></div>` : "";
-  $("main").innerHTML = `${joinBox}${notifyBox}
+  $("main").innerHTML = `${data.own ? `<div class="notify"><span>Need to talk to a patient right now?</span><button class="btn" id="ib">Start instant call</button></div>` : ""}${joinBox}${notifyBox}
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" data-t="pending" aria-selected="${tab === "pending"}">Requests${p ? `<span class="n">${p}</span>` : ""}</button>
       <button class="tab" role="tab" data-t="upcoming" aria-selected="${tab === "upcoming"}">Upcoming${u ? `<span class="n">${u}</span>` : ""}</button>
@@ -194,6 +194,7 @@ function render() {
   document.querySelectorAll("[data-mclr]").forEach(b => b.onclick = () => medClear(b));
   document.querySelectorAll("[data-fu]").forEach(b => b.onclick = () => fuDialog(b.dataset.fu));
   if ($("nb")) $("nb").onclick = enablePush;
+  if ($("ib")) $("ib").onclick = instantCall;
   if (tab === "timetable") loadTT();
 }
 function card(b) {
@@ -246,6 +247,31 @@ async function openRoom() {
   $("main").innerHTML = `<div class="empty">Opening the consultation room…</div>`;
   try { const d = await api("/host-token", { method: "POST" }); location.href = "consult.html" + (roomQ() ? roomQ() + "&" : "?") + "host=" + encodeURIComponent(d.token); }
   catch (e) { $("main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+/* instant call: make a private room now, send its link to the patient, and join it */
+async function instantCall() {
+  const btn = $("ib"); btn.disabled = true; btn.textContent = "Creating…";
+  try {
+    const j = await api("/video/instant", { method: "POST", body: JSON.stringify({ d: (me && me.id) || "main" }) });
+    const base = location.origin + location.pathname.replace(/doctor\.html$/, "");
+    const dq = me && me.id && me.id !== "main" ? "d=" + encodeURIComponent(me.id) + "&" : "";
+    const link = `${base}room.html?${dq}i=${encodeURIComponent(j.id)}&t=${encodeURIComponent(j.t)}`;
+    const mine = `room.html?${dq}i=${encodeURIComponent(j.id)}&host=1`;
+    const dlg = document.createElement("dialog");
+    dlg.style.cssText = "border:0;border-radius:20px;padding:22px;max-width:420px;width:92%;font-family:inherit";
+    dlg.innerHTML = `<h3 style="margin:0 0 6px">Instant video call</h3><p class="note" style="margin:0 0 12px">Send this private link to your patient, then join. It works for 4 hours and is never recorded.</p>
+      <input id="ilink" readonly style="width:100%;padding:11px;border:1px solid #ccc;border-radius:12px;font-size:13px" value="${esc(link)}">
+      <input id="iph" type="tel" inputmode="tel" placeholder="Patient's WhatsApp number (optional)" style="width:100%;padding:11px;border:1px solid #ccc;border-radius:12px;margin-top:8px">
+      <div class="acts" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn wa" id="iwa">Send on WhatsApp</button><button class="btn no" id="icp">Copy link</button><button class="btn" id="ijoin">Join now</button></div>
+      <p style="text-align:center;margin:12px 0 0"><button class="btn no" id="icl" style="background:none;border:0;text-decoration:underline">Close</button></p>`;
+    document.body.appendChild(dlg); dlg.showModal();
+    const msg = `Hello, ${D.name} is ready to see you on video now. Please open this private link: ${link}`;
+    $("iwa").onclick = () => { const p = phoneDigits($("iph").value); window.open(p ? `https://wa.me/${p}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank"); };
+    $("icp").onclick = async () => { try { await navigator.clipboard.writeText(link); toast("Link copied"); } catch (e) { $("ilink").select(); toast("Select and copy the link"); } };
+    $("ijoin").onclick = () => { try { sessionStorage.setItem("dcbHost", token); } catch (e) {} location.href = mine; };
+    $("icl").onclick = () => { dlg.close(); dlg.remove(); };
+  } catch (e) { toast(e.message); }
+  btn.disabled = false; btn.textContent = "Start instant call";
 }
 async function startCall(btn) {
   if (data.own && btn.dataset.uid) {   // own video room: the doctor joins this booking's room

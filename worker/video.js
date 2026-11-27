@@ -28,15 +28,25 @@ import { engineList, agoraRoom, fishjamRoom } from "./video-engines.js";
 
 const enc = new TextEncoder();
 const MIN = 60e3;
-const isVideoPath = p => p === "/video/join" || p === "/video/ws" || p === "/video/backup";
+const isVideoPath = p => p === "/video/join" || p === "/video/ws" || p === "/video/backup" || p === "/video/instant";
 export { isVideoPath };
 
 /* opts: { doctors: [...], whoAmI: async req => doctorId | null, onWaiting: async (doc) => {}, json, err } */
 export async function videoRoute(req, env, url, p, opts) {
   const { json, err } = opts;
   if (p === "/video/ws") return wsRoute(req, env, url, opts);
-  if ((p !== "/video/join" && p !== "/video/backup") || req.method !== "POST") throw err(404, "Not found.");
+  if (!["/video/join", "/video/backup", "/video/instant"].includes(p) || req.method !== "POST") throw err(404, "Not found.");
   const a = await req.json().catch(() => ({}));
+  if (p === "/video/instant") {
+    // the doctor starts an instant consultation: a private room that is not tied to a booking, with a link to send to the patient
+    const d = (opts.doctors || []).find(x => x.id === String(a.d || "main")) || (opts.doctors || [])[0];
+    if (!d) throw err(400, "Unknown doctor.");
+    const me = await opts.whoAmI(req).catch(() => null);
+    if (me !== d.id) throw err(403, "Please log in as this doctor.");
+    const rnd = [...crypto.getRandomValues(new Uint8Array(8))].map(x => (x % 36).toString(36)).join("");
+    const id = Date.now().toString(36).padStart(8, "0") + rnd;
+    return json({ ok: true, id, t: await manageToken(env, d.id, "inst" + id), validHours: 4 });
+  }
   const g = await gate(req, env, opts, a);
   if (g.wait) return json(g.wait);
   const { doc, uid, role, b, closes, info } = g;
@@ -73,6 +83,7 @@ async function gate(req, env, opts, a) {
   const { err } = opts;
   const doc = (opts.doctors || []).find(x => x.id === String(a.d || "main")) || (opts.doctors || [])[0];
   if (!doc) throw err(400, "Unknown doctor.");
+  if (a.i) return instantGate(req, env, opts, a, doc);   // instant consultation (no booking)
   const uid = String(a.b || "");
   if (!/^[A-Za-z0-9_-]{8,40}$/.test(uid)) throw err(400, "This link is not complete.");
 
@@ -94,6 +105,23 @@ async function gate(req, env, opts, a) {
   if (now > closes) throw err(410, "This consultation time has passed.");
   const info = { ok: true, role, me: role === "doctor" ? doc.name : b.name, other: role === "doctor" ? b.name : doc.name, title: b.title, start: b.start, end: b.end };
   return { doc, uid, role, b, closes, info };
+}
+
+/* instant consultation: the room id carries its start time (first 8 characters); the link works for 4 hours */
+async function instantGate(req, env, opts, a, doc) {
+  const { err } = opts;
+  const id = String(a.i || "");
+  if (!/^[a-z0-9]{16}$/.test(id)) throw err(400, "This link is not complete.");
+  let role = "patient";
+  if (req.headers.get("authorization")) {
+    const me = await opts.whoAmI(req).catch(() => null);
+    if (me !== doc.id) throw err(403, "Only this doctor can join as the doctor.");
+    role = "doctor";
+  } else if (!safeEq(String(a.t || ""), await manageToken(env, doc.id, "inst" + id))) throw err(403, "This link is not valid.");
+  const made = parseInt(id.slice(0, 8), 36), closes = made + 4 * 3600e3;
+  if (!(made > 0) || Date.now() > closes) throw err(410, "This instant consultation link has expired. Please ask the doctor for a new one.");
+  const info = { ok: true, role, me: role === "doctor" ? doc.name : "Patient", other: role === "doctor" ? "Patient" : doc.name, title: "Instant consultation", start: new Date(made).toISOString(), end: new Date(closes).toISOString() };
+  return { doc, uid: "inst" + id, role, b: {}, closes, info };
 }
 
 /* BACKUP VIDEO: Daily (DotCom's one Daily account, secret DAILY_BACKUP_KEY — no account per doctor).

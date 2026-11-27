@@ -227,7 +227,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 
 const API = ((S.helper && S.helper.url) || "").replace(/\/$/, "");
 const q = new URLSearchParams(location.search);
-const A = { d: q.get("d") || "main", b: q.get("b") || "", t: q.get("t") || "" };
+const A = { d: q.get("d") || "main", b: q.get("b") || "", t: q.get("t") || "", i: q.get("i") || "" };   // i = an instant consultation (no booking)
 const host = q.get("host") === "1";
 const hostToken = host ? (sessionStorage.getItem("dcbHost") || localStorage.getItem("docToken") || "") : "";
 const home = host ? "doctor.html" : "./";
@@ -292,7 +292,7 @@ async function askRoom(extra, path) {
 
 async function open() {
   if (!API) return msg("Room not available", "This website's consultation room is not set up yet.", `<a class="btn" href="${home}">Back</a>`);
-  if (!A.b || (!host && !A.t)) return msg("Please use your consultation link", "Open the <b>Consultation room</b> link from your booking email, or the <b>Change or cancel</b> page.", `<a class="btn" href="./">Back to website</a>`);
+  if ((!A.b && !A.i) || (!host && !A.t)) return msg("Please use your consultation link", "Open the <b>Consultation room</b> link from your booking email, or the <b>Change or cancel</b> page.", `<a class="btn" href="./">Back to website</a>`);
   if (host && !hostToken) return msg("Please log in", "Open the room from your dashboard (Start call).", `<a class="btn" href="doctor.html">Open dashboard</a>`);
   let r, j;
   try { [r, j] = await askRoom(); }
