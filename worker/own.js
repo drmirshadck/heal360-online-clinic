@@ -13,7 +13,7 @@ import { DEFAULT_SCHEDULE } from "./calendar.js";
 import { manageToken } from "./mail.js";
 export { manageToken };
 
-const BOOK = ["/book/info", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule", "/book/med-ref"];
+const BOOK = ["/book/info", "/book/fee", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule", "/book/med-ref"];
 const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear", "/follow"];
 export const isOwnPublic = p => BOOK.includes(p);
 export const isOwnDoctor = p => DOCTOR.includes(p);
@@ -24,6 +24,11 @@ export async function ownPublic(req, env, url, p, doctors, hooks = {}) {
   if (p === "/book/info" && M === "GET") {
     const doc = pick(doctors, url.searchParams.get("d"));
     return ok(await call(env, doc, { op: "info", slug: slug(url.searchParams.get("slug")) }));
+  }
+  if (p === "/book/fee" && M === "GET") {
+    await limit(env, req, "fee", 30, 3600, "Too many checks from this connection. Please try again later.");
+    const doc = pick(doctors, url.searchParams.get("d"));
+    return ok(await call(env, doc, { op: "fee", phone: url.searchParams.get("phone") || "" }));
   }
   if (p === "/book/slots" && M === "GET") {
     const q = url.searchParams, doc = pick(doctors, q.get("d"));

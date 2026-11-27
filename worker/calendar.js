@@ -207,6 +207,7 @@ export class Calendar {
         const t = this.typeOf(s, a.slug); if (!t) throw bad(404, "This consultation type is not open for online booking.");
         return { title: t.name, length: t.length, confirm: t.confirm, phone: { required: true }, fields: [] };
       }
+      case "fee": return await this.feeFor(s, a.phone);
       case "slots": {
         const t = this.typeOf(s, a.slug); if (!t) throw bad(404, "This consultation type is not open for online booking.");
         const from = Date.parse(a.from + "T00:00:00Z") - 14 * 3600e3;   // a little before, trimmed by tz grouping below
@@ -227,6 +228,10 @@ export class Calendar {
         const id = newId();
         const status = t.confirm ? "pending" : "confirmed";
         const p = a.patient || {};
+        if (a.slug === "follow-up-free" || a.slug === "follow-up-paid") {   // follow-ups only for a patient inside the 14-day cycle
+          const f = await this.feeFor(s, p.phone);
+          if (f.kind !== (a.slug === "follow-up-free" ? "free" : "paid")) throw bad(409, "This follow-up is not available for this phone number. Please start again and enter the number you used for your first consultation.");
+        }
         const enc = await this.seal({ name: p.name, email: p.email, phone: p.phone, notes: p.notes, utr: p.utr, tz: p.tz });
         this.sql.exec(`INSERT INTO bookings (id, start, "end", slug, title, status, created, updated, enc, r24, r1, w24) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)`,
           id, start, start + t.length * 6e4, a.slug, t.name, status, Date.now(), Date.now(), enc, start - Date.now() < 26 * 3600e3 ? 1 : 0, start - Date.now() < 26 * 3600e3 ? 1 : 0);
@@ -350,6 +355,24 @@ export class Calendar {
       name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", absent: !!b.absent, created: new Date(b.created).toISOString(),
       fu: b.fu_date ? { date: b.fu_date, sent: !!b.fu_sent } : null,
       med: b.med_amt > 0 ? { amount: b.med_amt, note: b.med_note || "", status: b.med_st || "due", ref: b.med_ref || "", at: new Date(b.med_at || b.updated).toISOString() } : null };
+  }
+
+  /* ---------- fee cycle: new ₹300 → free follow-up (days 1-7) → follow-up ₹150 (days 8-14) → day 15 new again ---------- */
+  async feeFor(s, phone) {
+    const key = String(phone || "").replace(/\D/g, "").slice(-10);
+    if (key.length < 10) throw bad(400, "Please enter your 10-digit mobile number.");
+    const rows = this.sql.exec(`SELECT start, enc FROM bookings WHERE slug = 'online-video-consultation' AND status IN ('pending','confirmed') AND start > ? ORDER BY start DESC LIMIT 200`, Date.now() - 40 * DAY).toArray();
+    for (const r of rows) {
+      const p = await this.open(r.enc);
+      if (!p || String(p.phone || "").replace(/\D/g, "").slice(-10) !== key) continue;
+      const day0 = localDate(r.start, s.tz), today = localDate(Date.now(), s.tz);
+      const d = Math.round((Date.parse(today) - Date.parse(day0)) / DAY);
+      const until = n => localDate(Date.parse(day0) + n * DAY, "UTC");
+      if (d < 0 || d >= 14) return { kind: "new" };
+      if (d <= 7) return { kind: "free", since: day0, until: until(7), freeUntil: until(7), cycleEnds: until(13) };
+      return { kind: "paid", since: day0, until: until(13), freeUntil: until(7), cycleEnds: until(13) };
+    }
+    return { kind: "new" };
   }
 
   /* ---------- encryption of patient details ---------- */

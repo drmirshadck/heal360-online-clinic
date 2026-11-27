@@ -34,7 +34,6 @@ const CALU = () => (DOC.calUser || "").trim();
 function openBook(slug, docId) {
   st = { step: 0, type: null, utr: "", doc: docId || "" };
   if (docId) setDoc(docId); else if (DOCS.length > 1) st.step = -1; else setDoc(DOCS[0].id);
-  if (slug && T.some(t => t.calSlug === slug)) { st.type = slug; st.step = type().fee > 0 ? 1 : 2; }
   ov.hidden = false; document.body.style.overflow = "hidden"; render();
 }
 document.querySelectorAll("[data-book]").forEach(b => b.addEventListener("click", () => openBook(b.dataset.book || null, b.dataset.doc || (b.dataset.book ? DOCS[0].id : ""))));
@@ -74,8 +73,28 @@ function render() {
     return;
   }
   if (st.step === 0) {
-    box.innerHTML = `${DOCS.length > 1 ? `<div class="summary"><div><span>Doctor</span><b>${esc(DOC.name)}</b></div></div>` : ""}<p class="small">Choose your consultation type.</p><div style="display:grid;gap:10px">${T.map(x => `<button class="opt" data-t="${esc(x.calSlug)}"><div><b>${esc(x.name)}</b><span>${x.inClinic ? "In person" : "Video call"} · ${esc(x.duration)}</span></div><span class="fee">${x.fee > 0 ? "₹" + x.fee : "Free"}</span></button>`).join("")}</div>`;
-    box.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { st.type = b.dataset.t; st.step = type().fee > 0 ? 1 : 2; render(); });
+    const fs = k => (T.find(x => x.calSlug === k) || { fee: 0 }).fee;
+    const dt = iso => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    box.innerHTML = `${DOCS.length > 1 ? `<div class="summary"><div><span>Doctor</span><b>${esc(DOC.name)}</b></div></div>` : ""}<p class="small">Enter the mobile number you will use for your consultations. We use it to see whether this is a new consultation or a follow-up.</p>
+      <label class="f">Mobile number<input id="fp" type="tel" autocomplete="tel" inputmode="tel" value="${esc((st.form && st.form.phone) || "+91 ")}"></label>
+      <p class="err" id="e"></p>
+      <div id="fres"></div>
+      <div class="sheet-actions"><button class="btn btn-solid" id="fgo" style="margin-left:auto">Continue</button></div>
+      <p class="small">New consultation ₹${fs("online-video-consultation")}. Follow-up within 7 days is free. Follow-up on days 8 to 14 is ₹${fs("follow-up-paid")}. From day 15 a new consultation applies.</p>`;
+    $("#fgo", box).onclick = async () => {
+      const e = $("#e", box), b = $("#fgo", box), ph = $("#fp", box).value.trim(), dg = ph.replace(/\D/g, "");
+      if (dg.length < 10 || dg.length > 15) return e.textContent = "Please enter your mobile number with country code, e.g. +91 98765 43210.";
+      e.textContent = ""; b.disabled = true; b.textContent = "Checking…";
+      try {
+        const r = await helperGet("/book/fee?" + new URLSearchParams({ d: DOC.id, phone: ph }));
+        st.form = st.form || { name: "", email: "", phone: "", notes: "", extra: {} }; st.form.phone = ph;
+        st.kind = r.kind; st.type = r.kind === "free" ? "follow-up-free" : r.kind === "paid" ? "follow-up-paid" : "online-video-consultation"; st.info = null;
+        const t = type(), msg = r.kind === "free" ? `Free follow-up, valid till ${dt(r.until)}.` : r.kind === "paid" ? `Follow-up consultation ₹${t.fee}, valid till ${dt(r.until)}.` : `New consultation ₹${t.fee}.`;
+        $("#fres", box).innerHTML = `<div class="summary"><div><span>${esc(msg)}</span><b>${t.fee > 0 ? "₹" + t.fee : "Free"}</b></div></div>`;
+        b.textContent = "Continue";
+        setTimeout(() => { st.step = t.fee > 0 ? 1 : 2; render(); }, 1100);
+      } catch (x) { e.textContent = (x && x.message) || "Could not check the number. Please try again."; b.disabled = false; b.textContent = "Continue"; }
+    };
     if (DOCS.length > 1) { const bk = document.createElement("div"); bk.className = "sheet-actions"; bk.innerHTML = `<button class="btn btn-ghost">Change doctor</button>`; bk.firstChild.onclick = () => { st.step = -1; render(); }; box.appendChild(bk); }
   } else if (st.step === 1) {
     box.innerHTML = `<div class="summary"><div><span>${esc(t.name)} (${esc(t.duration)})</span><b>₹${t.fee}</b></div></div>

@@ -16,8 +16,9 @@ window.SITE = {
   consultations: {
     intro: "Choose your consultation, then pick your time.",
     types: [
-      { calSlug: "online-video-consultation", name: "New consultation", duration: "30 minutes", fee: 0, featured: true, text: "A detailed first consultation with a complete case history." },
-      { calSlug: "review-consultation", name: "Review consultation", duration: "20 minutes", fee: 0, text: "For patients already under the doctor's care." }
+      { calSlug: "online-video-consultation", name: "New consultation", duration: "30 minutes", fee: 300, featured: true, text: "A detailed first consultation with a complete case history." },
+      { calSlug: "follow-up-free", name: "Free follow-up", duration: "20 minutes", fee: 0, text: "Within 7 days of your consultation." },
+      { calSlug: "follow-up-paid", name: "Follow-up consultation", duration: "20 minutes", fee: 150, text: "Days 8 to 14 after your consultation." }
     ]
   },
   helper: { url: "https://heal360-helper.drmirshadck.workers.dev" },   // DotCom booking helper URL (set after the helper is deployed)
