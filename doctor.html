@@ -84,7 +84,7 @@
 </style>
 </head>
 <body>
-<header><div><b id="dn"></b><small>Doctor dashboard</small></div><div id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></div></header>
+<header><div><b id="dn"></b><small>Doctor dashboard</small></div><div style="display:flex;gap:6px;align-items:center"><a class="hbtn" href="./" style="text-decoration:none">Home</a><span id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></span></div></header>
 <main id="main"></main>
 <dialog id="dlg"><h3>Decline this booking?</h3><p class="note">The patient gets an email that the booking was declined. If they already paid, refund them by UPI.</p><textarea id="reason">The doctor is not available at this time. Please book another slot.</textarea><div class="acts"><button class="btn ghost" id="dNo">Keep it</button><button class="btn no" id="dYes">Decline</button></div></dialog>
 <dialog id="mdlg"><h3 id="mTitle">Medicine amount</h3><p class="note" id="mSub"></p>
