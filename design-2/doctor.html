@@ -33,10 +33,10 @@
   .btn.wa{background:#25d366}
   .btn:disabled{opacity:.55;cursor:wait}
   .err{color:#b3261e;min-height:1.3em;margin-top:10px;font-size:14px}
-  .tabs{display:flex;gap:8px;margin:4px 0 14px}
-  .tab{flex:1;border:0;background:var(--card);border-radius:14px;padding:12px;font-weight:700;color:var(--muted);border:1.5px solid var(--line)}
+  .tabs{display:flex;gap:6px;margin:4px 0 14px;overflow-x:auto}
+  .tab{flex:1;min-width:0;white-space:nowrap;border:0;background:var(--card);border-radius:14px;padding:12px 6px;font-size:14px;font-weight:700;color:var(--muted);border:1.5px solid var(--line)}
   .tab[aria-selected=true]{background:var(--deep);color:#fff;border-color:var(--deep)}
-  .tab .n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:#fff;font-size:12px;margin-left:6px;padding:0 6px}
+  .tab .n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:#fff;font-size:12px;margin-left:4px;padding:0 5px}
   .tab[aria-selected=true] .n{background:#fff;color:var(--deep)}
   .card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
   .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
@@ -74,6 +74,12 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid2 label{font-size:13.5px;color:var(--muted);display:grid;gap:4px}
   .leave{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .med{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f3f7f8;display:grid;gap:4px;font-size:14px}
+  .med b{font:700 16px Outfit}
+  .med.due{background:#fff8e6;border:1px solid #f3dfa8}.med.paid{background:#eef8f1;border:1px solid #cfe9d6}
+  .tag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
+  .tag.due{background:#ffe9b8;color:#7a5200}.tag.paid{background:#d6f0dc;color:var(--ok)}
+  dialog input[type=number],dialog input[type=text]{width:100%;font:inherit;font-size:16px;border:1.5px solid var(--line);border-radius:12px;padding:11px;margin:6px 0 4px}
   .save{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}
 </style>
 </head>
@@ -81,6 +87,11 @@
 <header><div><b id="dn"></b><small>Doctor dashboard</small></div><div id="hdrBtns" hidden><button class="hbtn" id="refresh">Refresh</button> <button class="hbtn" id="logout">Log out</button></div></header>
 <main id="main"></main>
 <dialog id="dlg"><h3>Decline this booking?</h3><p class="note">The patient gets an email that the booking was declined. If they already paid, refund them by UPI.</p><textarea id="reason">The doctor is not available at this time. Please book another slot.</textarea><div class="acts"><button class="btn ghost" id="dNo">Keep it</button><button class="btn no" id="dYes">Decline</button></div></dialog>
+<dialog id="mdlg"><h3 id="mTitle">Medicine amount</h3><p class="note" id="mSub"></p>
+  <label class="note" style="display:block;margin-top:10px">Amount to pay (₹)<input type="number" id="mAmt" inputmode="numeric" min="1" max="100000" placeholder="e.g. 850"></label>
+  <label class="note" style="display:block;margin-top:6px">What it is for (optional)<input type="text" id="mNote" maxlength="100" placeholder="e.g. Medicines for 1 month + courier"></label>
+  <p class="note" style="margin-top:8px" id="mHow"></p><p class="err" id="mErr"></p>
+  <div class="acts"><button class="btn ghost" id="mNo">Cancel</button><button class="btn" id="mYes">Save &amp; send</button></div></dialog>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -160,15 +171,19 @@ function render() {
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" data-t="pending" aria-selected="${tab === "pending"}">Requests${p ? `<span class="n">${p}</span>` : ""}</button>
       <button class="tab" role="tab" data-t="upcoming" aria-selected="${tab === "upcoming"}">Upcoming${u ? `<span class="n">${u}</span>` : ""}</button>
+      ${data.own ? `<button class="tab" role="tab" data-t="medicine" aria-selected="${tab === "medicine"}">Medicine${medDue() ? `<span class="n">${medDue()}</span>` : ""}</button>` : ""}
       ${data.own ? `<button class="tab" role="tab" data-t="timetable" aria-selected="${tab === "timetable"}">Timetable</button>` : ""}
     </div>
-    ${tab === "timetable" ? `<div id="tt" class="tt"><div class="empty">Loading timetable…</div></div>` : list.length ? list.map(card).join("") : `<div class="empty">${tab === "pending" ? "No new requests. You'll be notified when a patient books." : "No upcoming consultations."}</div>`}
+    ${tab === "timetable" ? `<div id="tt" class="tt"><div class="empty">Loading timetable…</div></div>` : tab === "medicine" ? medTab() : list.length ? list.map(card).join("") : `<div class="empty">${tab === "pending" ? "No new requests. You'll be notified when a patient books." : "No upcoming consultations."}</div>`}
     <p class="note" style="text-align:center;margin-top:10px">Times are in India time (IST). Updates every minute.</p>`;
   document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
   document.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => confirmB(b));
   document.querySelectorAll("[data-no]").forEach(b => b.onclick = () => declineB(b.dataset.no));
   document.querySelectorAll("[data-call]").forEach(b => b.onclick = () => startCall(b));
   document.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => declineB(b.dataset.cx, true));
+  document.querySelectorAll("[data-madd]").forEach(b => b.onclick = () => medDialog(b.dataset.madd));
+  document.querySelectorAll("[data-mpaid]").forEach(b => b.onclick = () => medPaid(b));
+  document.querySelectorAll("[data-mclr]").forEach(b => b.onclick = () => medClear(b));
   if ($("nb")) $("nb").onclick = enablePush;
   if (tab === "timetable") loadTT();
 }
@@ -232,6 +247,72 @@ async function startCall(btn) {
   btn.disabled = true; btn.textContent = "Opening…";
   try { const d = await api("/host-token", { method: "POST" }); location.href = "consult.html" + (roomQ() ? roomQ() + "&" : "?") + "host=" + encodeURIComponent(d.token); }
   catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Start call"; }
+}
+
+/* ---------- medicine payment: the doctor adds the amount; the patient pays this doctor's own UPI ---------- */
+function medItems() {   // consultations that have started (so medicines can be prepared) + recent past ones
+  const seen = new Set(), now = Date.now();
+  return [...(data.past || []), ...(data.upcoming || []).filter(b => Date.parse(b.start) <= now || b.med)]
+    .filter(b => !seen.has(b.uid) && seen.add(b.uid));
+}
+const medDue = () => medItems().filter(b => b.med && b.med.status === "due").length;
+const manageLink = b => { const base = location.origin + location.pathname.replace(/doctor\.html$/, ""); return `${base}manage.html?${me && me.id && me.id !== "main" ? "d=" + encodeURIComponent(me.id) + "&" : ""}b=${encodeURIComponent(b.uid)}&t=${encodeURIComponent(b.t || "")}`; };
+function medTab() {
+  const rank = b => !b.med ? 1 : b.med.status === "due" ? 0 : 2;
+  const items = medItems().sort((a, b) => rank(a) - rank(b) || Date.parse(b.start) - Date.parse(a.start));
+  const hasUpi = !!((DOCS && me && (DOCS.find(d => d.id === me.id) || {}).upiId) || (S.payment && S.payment.upiId));
+  return `<p class="note" style="margin-bottom:10px">After a consultation, add the medicine amount. The patient gets a <b>Pay</b> button that opens their UPI app and pays <b>your own UPI</b>. Unpaid ones stay at the top.</p>
+    ${hasUpi ? "" : `<div class="notify">Your UPI ID is not set on the website yet, so patients can't pay online. Tell DotCom by Arshees to add it.</div>`}
+    ${items.length ? items.map(medCard).join("") : `<div class="empty">No consultations yet. Once you've seen a patient, they appear here.</div>`}`;
+}
+function medCard(b) {
+  const m = b.med, ph = phoneDigits(b.phone);
+  const link = manageLink(b);
+  const wa = text => `https://wa.me/${ph}?text=${encodeURIComponent(text)}`;
+  const msgNew = `Hello ${b.name}, your medicine payment of ₹${m ? m.amount : ""}${m && m.note ? " (" + m.note + ")" : ""} from ${D.name} is ready. Please pay here with your UPI app: ${link}`;
+  const msgRem = `Hello ${b.name}, a gentle reminder about your medicine payment of ₹${m ? m.amount : ""} to ${D.name}. You can pay here with your UPI app: ${link}`;
+  const head = `<div class="top"><div><h3>${esc(b.name)}</h3><div class="meta"><span>${esc(typeName(b.title))} · ${esc(day(b.start))}, ${esc(time(b.start))}</span></div></div></div>`;
+  if (!m) return `<div class="card">${head}<div class="acts"><button class="btn" data-madd="${esc(b.uid)}">Add medicine amount</button></div></div>`;
+  const paid = m.status === "paid";
+  return `<div class="card">${head}
+    <div class="med ${paid ? "paid" : "due"}"><span><b>₹${esc(m.amount)}</b> <span class="tag ${paid ? "paid" : "due"}">${paid ? "Paid ✓" : "Not paid yet"}</span></span>
+      ${m.note ? `<span>${esc(m.note)}</span>` : ""}
+      ${!paid && m.ref ? `<span>Patient says paid · <span class="upi">Ref ${esc(m.ref)}</span> — check your UPI app, then tap Mark paid.</span>` : ""}</div>
+    ${paid ? "" : `<div class="acts">${ph ? `<a class="btn wa" href="${wa(m.ref ? msgNew : msgRem)}" target="_blank" rel="noopener">${m.ref ? "Send link again" : "Send link / reminder"}</a>` : ""}<button class="btn ok" data-mpaid="${esc(b.uid)}">Mark paid</button></div>
+    <div class="acts"><button class="btn ghost" data-madd="${esc(b.uid)}">Change amount</button><button class="btn no" data-mclr="${esc(b.uid)}">Remove</button></div>`}
+  </div>`;
+}
+function medDialog(uid) {
+  const b = medItems().find(x => x.uid === uid); if (!b) return;
+  const m = b.med, dlg = $("mdlg");
+  $("mTitle").textContent = m ? "Change medicine amount" : "Medicine amount";
+  $("mSub").textContent = `${b.name} · ${day(b.start)}`;
+  $("mAmt").value = m ? m.amount : ""; $("mNote").value = m ? m.note : ""; $("mErr").textContent = "";
+  $("mHow").textContent = data.emails ? "The patient gets an email with a Pay button. You can also send the link on WhatsApp from the card." : "Then tap Send link on the card to send the pay link on WhatsApp.";
+  dlg.showModal(); $("mAmt").focus();
+  $("mNo").onclick = () => dlg.close();
+  $("mYes").onclick = async () => {
+    const amt = Math.round(Number($("mAmt").value));
+    if (!(amt >= 1 && amt <= 100000)) { $("mErr").textContent = "Enter the amount in rupees."; return; }
+    $("mYes").disabled = true;
+    try {
+      await api("/med", { method: "POST", body: JSON.stringify({ uid, amount: amt, note: $("mNote").value.trim() }) });
+      dlg.close(); toast(data.emails ? `Saved. ${b.name} gets an email to pay ₹${amt}.` : "Saved. Tap Send link to message the patient."); tab = "medicine"; await load();
+    } catch (e) { $("mErr").textContent = e.message; }
+    $("mYes").disabled = false;
+  };
+}
+async function medPaid(btn) {
+  if (!confirm("Mark this as paid? Only do this after you see the money in your UPI app.")) return;
+  btn.disabled = true;
+  try { await api("/med-paid", { method: "POST", body: JSON.stringify({ uid: btn.dataset.mpaid }) }); toast("Marked as paid."); await load(); }
+  catch (e) { toast(e.message); btn.disabled = false; }
+}
+async function medClear(btn) {
+  if (!confirm("Remove this medicine amount?")) return;
+  btn.disabled = true;
+  try { await api("/med-clear", { method: "POST", body: JSON.stringify({ uid: btn.dataset.mclr }) }); toast("Removed."); await load(); }
+  catch (e) { toast(e.message); btn.disabled = false; }
 }
 
 /* ---------- timetable (own calendar) ---------- */

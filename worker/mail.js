@@ -132,7 +132,9 @@ export function bookingEmail(env, doc, b, kind, many) {
     reminder1: [`Starting soon: your consultation – ${clinic}`, "Your consultation starts in about an hour",
       `${hi}${card(rows)}<p style="margin:0 0 16px;font-size:15px">A few minutes before your time, open the consultation room and allow camera and microphone when asked.</p>${btn(room, "Open consultation room")}`],
     rescheduled: [`New appointment time – ${clinic}`, "Your appointment time is changed",
-      `${hi}${card(rows)}${manage ? btn(manage, "View, change or cancel") : ""}`]
+      `${hi}${card(rows)}${manage ? btn(manage, "View, change or cancel") : ""}`],
+    medicine: b.med ? [`Medicine payment ₹${b.med.amount} – ${clinic}`, "Your medicine payment is ready",
+      `${hi}<p style="margin:0 0 16px;font-size:15px">${esc(doc.name || "Your doctor")} has prepared your medicines. Please pay the amount below. The button opens your UPI app and the money goes directly to ${esc(doc.name || "the doctor")}'s UPI.</p>${card([["Medicine amount", "₹" + b.med.amount]].concat(b.med.note ? [["For", b.med.note]] : []).concat(many ? [["Doctor", doc.name]] : []))}${manage ? btn(manage, "Pay ₹" + b.med.amount) : ""}<p style="margin:0;font-size:13px;color:#5d727a">After paying, you can enter the UPI reference number on the same page.</p>`] : null
   }[kind];
   return T ? { to: b.email, subject: T[0], html: shell(env, T[1], T[2]) } : null;
 }
@@ -172,7 +174,9 @@ export function doctorEmail(env, doc, b, kind, many) {
     rescheduled: [`Patient changed the time – ${nm}`, "A patient changed their appointment time",
       `${hi}<p style="margin:0 0 16px;font-size:15px">${who} moved their appointment to the new time below.</p>${card(rows)}${btn(dash, "Open dashboard")}`],
     reminder24: [`Tomorrow: consultation with ${nm}`, "You have a consultation tomorrow", `${hi}${card(rows)}${btn(dash, "Open dashboard")}`],
-    reminder1: [`In 1 hour: consultation with ${nm}`, "Your consultation starts in about an hour", `${hi}${card(rows)}${btn(room, "Open consultation room")}<p style="margin:0;font-size:14px"><a href="${esc(dash)}" style="color:#005293">Open dashboard</a></p>`]
+    reminder1: [`In 1 hour: consultation with ${nm}`, "Your consultation starts in about an hour", `${hi}${card(rows)}${btn(room, "Open consultation room")}<p style="margin:0;font-size:14px"><a href="${esc(dash)}" style="color:#005293">Open dashboard</a></p>`],
+    medref: b.med ? [`Medicine payment – ${nm} says paid`, "A patient says they paid for medicines",
+      `${hi}<p style="margin:0 0 16px;font-size:15px">${who} says they paid ₹${b.med.amount} for medicines. Please check your UPI app for this payment, then tap <b>Mark paid</b> in your dashboard.</p>${card([["Patient", b.name || ""], ["Amount", "₹" + b.med.amount]].concat(b.med.ref ? [["UPI ref", b.med.ref]] : []))}${btn(dash, "Open dashboard")}`] : null
   }[kind];
   return T ? { to: doc.email, subject: T[0], html: shell(env, T[1], T[2], true) } : null;
 }

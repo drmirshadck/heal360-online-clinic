@@ -5,13 +5,15 @@
  * Patient's manage link:     GET /book/manage, POST /book/cancel, POST /book/reschedule   (signed link, no login)
  * Doctor dashboard (PIN):    GET /bookings, POST /confirm, POST /decline, POST /cancel-booking,
  *                            GET /schedule, POST /schedule, GET /export?month=YYYY-MM (CSV)
+ *                            POST /med (amount + note), POST /med-paid, POST /med-clear   (medicine payment)
+ * Patient pays the doctor's own UPI from manage.html; POST /book/med-ref = "I have paid" + 12-digit reference.
  */
 import { DEFAULT_SCHEDULE } from "./calendar.js";
 import { manageToken } from "./mail.js";
 export { manageToken };
 
-const BOOK = ["/book/info", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule"];
-const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export"];
+const BOOK = ["/book/info", "/book/slots", "/book/create", "/book/manage", "/book/cancel", "/book/reschedule", "/book/med-ref"];
+const DOCTOR = ["/bookings", "/confirm", "/decline", "/cancel-booking", "/schedule", "/export", "/med", "/med-paid", "/med-clear"];
 export const isOwnPublic = p => BOOK.includes(p);
 export const isOwnDoctor = p => DOCTOR.includes(p);
 
@@ -47,11 +49,17 @@ export async function ownPublic(req, env, url, p, doctors, hooks = {}) {
   // patient's manage link
   let a = {};
   if (p === "/book/manage" && M === "GET") a = { b: url.searchParams.get("b"), d: url.searchParams.get("d"), t: url.searchParams.get("t") };
-  else if ((p === "/book/cancel" || p === "/book/reschedule") && M === "POST") a = await body(req);
+  else if ((p === "/book/cancel" || p === "/book/reschedule" || p === "/book/med-ref") && M === "POST") a = await body(req);
   else throw bad(404, "Not found.");
   const doc = pick(doctors, a.d);
   if (!safeEq(String(a.t || ""), await manageToken(env, doc.id, String(a.b || "")))) throw bad(403, "This link is not valid.");
   if (p === "/book/manage") { const v = await call(env, doc, { op: "get", id: a.b }); return ok(publicView(v)); }
+  if (p === "/book/med-ref") {
+    await limit(env, req, "mr", 10, 3600, "Too many tries. Please contact the clinic.");
+    const v = await call(env, doc, { op: "medRef", id: a.b, ref: a.ref });
+    if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: a.t }, "medicine ref"));
+    return ok({ ok: true });
+  }
   if (p === "/book/cancel") {
     const v = await call(env, doc, { op: "cancel", id: a.b });
     if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: a.t }, "cancelled by patient"));
@@ -69,20 +77,28 @@ export async function ownDoctor(req, env, url, p, doc, hooks = {}) {
   if (p === "/bookings" && M === "GET") {
     const r = await call(env, doc, { op: "list" });
     // signed link per booking, so the dashboard can send the patient their consultation-room link
-    for (const k of ["pending", "upcoming"]) for (const b of r[k] || []) b.t = await manageToken(env, doc.id, b.uid);
+    for (const k of ["pending", "upcoming", "past"]) for (const b of r[k] || []) b.t = await manageToken(env, doc.id, b.uid);
     return ok(r);
   }
   if (p === "/confirm" && M === "POST") { const { uid } = await body(req); const v = await call(env, doc, { op: "confirm", id: uid }); if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: await manageToken(env, doc.id, v.uid) }, "confirmed")); return ok({ ok: true }); }
   if (p === "/decline" && M === "POST") { const { uid, reason } = await body(req); const v = await call(env, doc, { op: "decline", id: uid }); if (hooks.onChange) await later(hooks, () => hooks.onChange(doc, { ...v, reason: String(reason || "").slice(0, 300) }, "declined")); return ok({ ok: true }); }
   if (p === "/cancel-booking" && M === "POST") { const { uid, reason } = await body(req); const v = await call(env, doc, { op: "dcancel", id: uid }); if (hooks.onChange) await later(hooks, () => hooks.onChange(doc, { ...v, reason: String(reason || "").slice(0, 300) }, "cancelled by doctor")); return ok({ ok: true }); }
+  if (p === "/med" && M === "POST") {
+    const { uid, amount, note } = await body(req);
+    const v = await call(env, doc, { op: "setMed", id: uid, amount, note });
+    if (hooks.onChange) await later(hooks, async () => hooks.onChange(doc, { ...v, t: await manageToken(env, doc.id, v.uid) }, "medicine"));
+    return ok({ ok: true, med: v.med });
+  }
+  if (p === "/med-paid" && M === "POST") { const { uid } = await body(req); const v = await call(env, doc, { op: "medPaid", id: uid }); return ok({ ok: true, med: v.med }); }
+  if (p === "/med-clear" && M === "POST") { const { uid } = await body(req); await call(env, doc, { op: "medClear", id: uid }); return ok({ ok: true }); }
   if (p === "/schedule" && M === "GET") return ok(await call(env, doc, { op: "schedule" }));
   if (p === "/schedule" && M === "POST") { const b = await body(req); return ok(await call(env, doc, { op: "setSchedule", schedule: b.schedule || {} })); }
   if (p === "/export" && M === "GET") {
     const month = url.searchParams.get("month") || "";
     const r = await call(env, doc, { op: "export", month });
     const fmt = iso => new Intl.DateTimeFormat("en-GB", { timeZone: r.tz, dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
-    const rows = [["Date & time", "Consultation", "Status", "Patient", "Phone", "Email", "UPI ref", "Notes"]]
-      .concat(r.rows.map(b => [fmt(b.start), b.title, b.status, b.name, b.phone, b.email, b.utr, b.notes]));
+    const rows = [["Date & time", "Consultation", "Status", "Patient", "Phone", "Email", "UPI ref", "Notes", "Medicine (Rs)", "Medicine payment"]]
+      .concat(r.rows.map(b => [fmt(b.start), b.title, b.status, b.name, b.phone, b.email, b.utr, b.notes, b.med ? b.med.amount : "", b.med ? (b.med.status === "paid" ? "Paid" : "Not paid yet") : ""]));
     const csv = "﻿" + rows.map(r => r.map(c => `"${String(c ?? "").replace(/"/g, '""').replace(/^[=+\-@]/, "'$&")}"`).join(",")).join("\r\n");
     return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="bookings-${month}.csv"`, "Cache-Control": "no-store" } });
   }
@@ -109,7 +125,7 @@ function defaultsFor(env, doc) {
   if (!s) { try { s = JSON.parse(env.SCHEDULE_JSON || "{}"); } catch (e) { s = {}; } }
   return { ...DEFAULT_SCHEDULE, ...(s || {}), tz: (s && s.tz) || env.TIMEZONE || DEFAULT_SCHEDULE.tz };
 }
-function publicView(v) { return { title: v.title, slug: v.slug, start: v.start, end: v.end, status: v.status, name: v.name, canChange: v.canChange }; }
+function publicView(v) { return { title: v.title, slug: v.slug, start: v.start, end: v.end, status: v.status, name: v.name, canChange: v.canChange, med: v.med ? { amount: v.med.amount, note: v.med.note, status: v.med.status, ref: v.med.ref ? "•••••••" + v.med.ref.slice(-4) : "" } : null }; }
 async function limit(env, req, tag, max, ttl, msg) {
   if (!env.PUSH) return;
   const k = tag + ":" + (req.headers.get("cf-connecting-ip") || "x");

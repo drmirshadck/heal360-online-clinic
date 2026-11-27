@@ -11,6 +11,7 @@
  *   get, cancel, reschedule                   (patient's own manage link, token checked by the worker)
  *   list, confirm, decline, dcancel, export   (doctor dashboard, after PIN login)
  *   schedule, setSchedule                     (doctor dashboard: timetable + leave)
+ *   setMed, medRef, medPaid, medClear         (medicine payment after the consultation)
  *   noshow, window                            (Pro: mark a patient absent; bookings in a time window for WhatsApp reminders)
  */
 import { emailPatient, emailDoctor, manageToken } from "./mail.js";
@@ -38,7 +39,9 @@ export class Calendar {
       status TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL, enc TEXT NOT NULL)`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS bk_start ON bookings(start)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)`);
-    for (const col of ["r24", "r1", "absent"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
+    for (const col of ["r24", "r1", "absent", "med_amt", "med_at"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch (e) { /* already there */ } }
+    // medicine payment (doctor adds the amount after the consultation; the patient pays the doctor's own UPI)
+    for (const col of ["med_note", "med_st", "med_ref"]) { try { this.sql.exec(`ALTER TABLE bookings ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch (e) { /* already there */ } }
   }
 
   async fetch(req) {
@@ -215,9 +218,39 @@ export class Calendar {
         const now = Date.now();
         const rows = this.sql.exec(`SELECT * FROM bookings WHERE "end" > ? AND status IN ('pending','confirmed') ORDER BY start LIMIT 200`, now - 2 * 3600e3).toArray();
         const all = await Promise.all(rows.map(r => this.view(r)));
-        const past = this.sql.exec(`SELECT * FROM bookings WHERE "end" <= ? AND "end" > ? AND status = 'confirmed' ORDER BY start DESC LIMIT 50`, now - 2 * 3600e3, now - 7 * DAY).toArray();
+        const past = this.sql.exec(`SELECT * FROM bookings WHERE "end" <= ? AND "end" > ? AND status = 'confirmed' ORDER BY start DESC LIMIT 100`, now - 2 * 3600e3, now - 30 * DAY).toArray();
         return { own: true, emails: !!(this.env.EMAIL_FROM && (this.env.ZEPTO_TOKEN || this.env.ZOHO_REFRESH_TOKEN)), pending: all.filter(b => b.status === "pending"), upcoming: all.filter(b => b.status === "confirmed"),
           past: await Promise.all(past.map(r => this.view(r))) };
+      }
+      case "setMed": {
+        const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
+        if (b.status !== "confirmed") throw bad(409, "Medicine payment can be added only for a confirmed consultation.");
+        if (b.med_st === "paid") throw bad(409, "This medicine payment is already marked as paid.");
+        const amt = Math.round(Number(a.amount));
+        if (!(amt >= 1 && amt <= 100000)) throw bad(400, "Enter the amount in rupees (1 to 1,00,000).");
+        const note = String(a.note || "").replace(/[<>\r\n]/g, " ").trim().slice(0, 100);
+        this.sql.exec(`UPDATE bookings SET med_amt = ?, med_note = ?, med_st = 'due', med_ref = '', med_at = ?, updated = ? WHERE id = ?`, amt, note, Date.now(), Date.now(), b.id);
+        return { ok: true, ...(await this.view(this.row(b.id))) };
+      }
+      case "medRef": {          // patient says they paid and gives the 12-digit UPI reference (the doctor still checks and marks paid)
+        const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
+        if (b.med_st !== "due") throw bad(409, "There is no medicine payment waiting for this booking.");
+        const ref = String(a.ref || "").replace(/\D/g, "");
+        if (ref.length !== 12) throw bad(400, "Please enter the 12-digit UPI reference number from your payment.");
+        this.sql.exec(`UPDATE bookings SET med_ref = ?, updated = ? WHERE id = ?`, ref, Date.now(), b.id);
+        return { ok: true, ...(await this.view(this.row(b.id))) };
+      }
+      case "medPaid": {
+        const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
+        if (b.med_st !== "due") throw bad(409, "There is no unpaid medicine amount on this booking.");
+        this.sql.exec(`UPDATE bookings SET med_st = 'paid', updated = ? WHERE id = ?`, Date.now(), b.id);
+        return { ok: true, ...(await this.view(this.row(b.id))) };
+      }
+      case "medClear": {
+        const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
+        if (b.med_st === "paid") throw bad(409, "A paid amount can't be removed.");
+        this.sql.exec(`UPDATE bookings SET med_amt = 0, med_note = '', med_st = '', med_ref = '', med_at = 0, updated = ? WHERE id = ?`, Date.now(), b.id);
+        return { ok: true, ...(await this.view(this.row(b.id))) };
       }
       case "noshow": {
         const b = this.row(a.id); if (!b) throw bad(404, "This booking was not found.");
@@ -256,7 +289,8 @@ export class Calendar {
   async view(b) {
     const p = await this.open(b.enc);
     return { uid: b.id, status: b.status, title: b.title || b.slug, slug: b.slug, start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString(),
-      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", absent: !!b.absent, created: new Date(b.created).toISOString() };
+      name: p.name || "Patient", email: p.email || "", phone: p.phone || "", notes: p.notes || "", utr: p.utr || "", tz: p.tz || "", absent: !!b.absent, created: new Date(b.created).toISOString(),
+      med: b.med_amt > 0 ? { amount: b.med_amt, note: b.med_note || "", status: b.med_st || "due", ref: b.med_ref || "", at: new Date(b.med_at || b.updated).toISOString() } : null };
   }
 
   /* ---------- encryption of patient details ---------- */

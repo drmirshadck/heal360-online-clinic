@@ -161,6 +161,8 @@ function hooks(env, ctx) {
     onNew: async (doc, b) => { await alert(doc, b.status === "pending" ? "request" : "created"); await mail(doc, b, b.status === "pending" ? "received" : "booked", b.status === "pending" ? "request" : "booked"); },
     onChange: async (doc, b, what) => {
       if (what === "confirmed") return mail(doc, b, "confirmed");
+      if (what === "medicine") return mail(doc, b, "medicine");          // patient: pay button; doctor kind has no email
+      if (what === "medicine ref") return mail(doc, b, "medref");        // doctor: patient says paid (patient kind has no email)
       if (what === "declined") return mail(doc, b, "declined");
       if (what === "cancelled by doctor") return mail(doc, b, "cancelledByDoctor");
       if (what === "cancelled by patient") { await alert(doc, "cancelled"); return mail(doc, b, "cancelledByPatient"); }
