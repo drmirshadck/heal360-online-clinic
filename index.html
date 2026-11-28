@@ -38,6 +38,7 @@
     <a href="#fees">Fees</a>
     <a href="room.html">Consultation room</a>
     <a href="#faq">Questions</a>
+    <a href="#" data-install hidden>Install app</a>
   </nav>
   <a class="go sm" href="#book" data-book>Book <i>&#8599;</i></a>
   <button class="burger" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')"><span></span><span></span></button>
@@ -179,7 +180,7 @@
   <div class="wrap foot">
     <div><b class="fname">Heal 360 Online Clinic</b><span class="slogan sm">Care that connects globally.</span><p>Online homoeopathic consultations<br><a href="tel:+917511136045">+91 75111 36045</a><br><a href="mailto:care@heal360homoeopathy.com">care@heal360homoeopathy.com</a></p></div>
     <div class="regs"><b>TCMC registration</b><br>Dr. Seena Naseem K.A. · 10868<br>Dr. Shameema · 10829<br>Dr. Musheera K. · 11350</div>
-    <div class="small"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a><br>Online consultations are not for emergencies. In an emergency call 112.<br>© 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
+    <div class="small"><a href="#" data-install hidden><b>Install the Heal 360 app</b></a><br><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a><br>Online consultations are not for emergencies. In an emergency call 112.<br>© 2026 Heal 360 Online Clinic · Website by DotCom by Arshees</div>
   </div>
 </footer>
 
@@ -189,6 +190,7 @@
 <script src="script.js"></script>
 <script src="qrcode.js"></script>
 <script src="booking.js"></script>
+<script src="install.js"></script>
 <script>
 (function(){try{var T=(window.SITE&&SITE.consultations&&SITE.consultations.types)||[],g=document.getElementById("feegrid");if(!g)return;
 var by=function(k){return T.filter(function(x){return x.calSlug===k})[0]||{fee:0}};
