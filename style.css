@@ -167,6 +167,6 @@ h1{animation:rise 1s .25s both,blurin 1s .25s both}
 
 /* 3D feel for the logo: thin edge + soft shadow, gentle lift on hover */
 .navlogo{filter:drop-shadow(.6px .9px 0 #0a4a47) drop-shadow(2px 3px 3px rgba(7,52,50,.3));transition:transform .4s ease}
-.brandband img{filter:drop-shadow(1px 1.6px 0 #0a4a47) drop-shadow(2px 3.5px 0 #083f3d) drop-shadow(5px 9px 10px rgba(7,52,50,.3));transition:transform .5s ease}
+.brandband img{filter:drop-shadow(0 6px 10px rgba(7,52,50,.22));transition:transform .5s ease}
 .brandband img:hover,.brand:hover .navlogo{transform:translateY(-2px) scale(1.02)}
 @media(prefers-reduced-motion:reduce){.navlogo,.brandband img{transition:none}.brandband img:hover,.brand:hover .navlogo{transform:none}}
