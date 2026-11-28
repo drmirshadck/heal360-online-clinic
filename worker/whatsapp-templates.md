@@ -98,7 +98,7 @@ Hello {{1}}, {{2}} has set your follow-up review for {{3}}, when the medicine co
 Thank you / നന്ദി.
 ```
 
-# Messages to the DOCTOR (English only; sent to the doctor's own WhatsApp number in DOCTORS_JSON). Category Utility.
+# Messages to the DOCTOR (wording below is exactly as approved by Meta on 28 Nov 2026; English only; sent to the doctor's own WhatsApp number in DOCTORS_JSON). Category Utility.
 
 ## D1. doctor_new_request  (1 doctor, 2 patient, 3 consultation, 4 day, 5 time, 6 dashboard link, 7 clinic, 8 website)
 Hello {{1}}, new booking request from {{2}} for {{3}} on {{4}} at {{5}} (IST). Please check the UPI payment, then confirm or decline here: {{6}} — {{7}} · {{8}} Thank you.
@@ -107,16 +107,16 @@ Hello {{1}}, new booking request from {{2}} for {{3}} on {{4}} at {{5}} (IST). P
 Hello {{1}}, {{2}} cancelled the appointment on {{3}} at {{4}} (IST). The time is free again. Dashboard: {{5}} — {{6}} · {{7}} Thank you.
 
 ## D3. doctor_time_changed  (1 doctor, 2 patient, 3 day, 4 time, 5 dashboard, 6 clinic, 7 website)
-Hello {{1}}, {{2}} moved their appointment to {{3}} at {{4}} (IST). Dashboard: {{5}} — {{6}} · {{7}} Thank you.
+Hello {{1}}, your patient {{2}} has moved their appointment to a new time: {{3}} at {{4}} (IST). You can see the updated schedule on your clinic dashboard here: {{5}} — {{6}} · {{7}} Thank you.
 
 ## D4. doctor_reminder_24h  (1 doctor, 2 patient, 3 day, 4 time, 5 start-call link, 6 clinic, 7 website)
-Hello {{1}}, reminder: you have a consultation with {{2}} tomorrow, {{3}} at {{4}} (IST). Start the call here: {{5}} — {{6}} · {{7}} Thank you.
+Hello {{1}}, this is a reminder that you have a consultation with your patient {{2}} tomorrow, {{3}} at {{4}} (IST). You can start the video call from this link when it is time: {{5}} — {{6}} · {{7}} Thank you.
 
 ## D5. doctor_reminder_30m  (1 doctor, 2 patient, 3 time, 4 start-call link, 5 clinic, 6 website)
-Hello {{1}}, your consultation with {{2}} starts in 30 minutes, at {{3}} (IST). Start the call here: {{4}} — {{5}} · {{6}} Thank you.
+Hello {{1}}, your consultation with your patient {{2}} will start in 30 minutes, at {{3}} (IST). You can start the video call from this link when you are ready: {{4}} — {{5}} · {{6}} Thank you.
 
 ## D6. doctor_medicine_paid  (1 doctor, 2 patient, 3 amount, 4 reference text, 5 dashboard, 6 clinic, 7 website) — the "paid" confirmation to the doctor
-Hello {{1}}, {{2}} says they paid ₹{{3}} for medicines ({{4}}). Please check your UPI app, then tap Mark paid in your dashboard: {{5}} — {{6}} · {{7}} Thank you.
+Hello {{1}}, your patient {{2}} says they have paid ₹{{3}} for medicines ({{4}}). Please check your UPI app, then tap Mark paid in your clinic dashboard here: {{5}} — {{6}} · {{7}} Thank you.
 
 ## Switching it on (after the number shows Connected and the templates are Approved)
 Add each doctor's own WhatsApp number to DOCTORS_JSON ("whatsapp"), or her messages are skipped.
